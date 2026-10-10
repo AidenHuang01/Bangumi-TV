@@ -1,0 +1,1132 @@
+{
+  "testedOn": "2026-10-09 America/Los_Angeles",
+  "completedAt": "2026-10-10 03:58:43 UTC",
+  "providers": [
+    "AGE",
+    "MXdm",
+    "DM84",
+    "moonci",
+    "sorani",
+    "7sefun"
+  ],
+  "titles": [
+    "葬送的芙莉莲",
+    "命运石之门",
+    "死亡笔记",
+    "ave mujica"
+  ],
+  "counts": {
+    "total": 24,
+    "passed": 10,
+    "failed": 14
+  },
+  "method": [
+    "Current Mac server implementation and its currently enabled Kazumi-compatible rule snapshots.",
+    "TV series matches only: no Frieren season 2, Steins;Gate 0, movies, specials or Ave Mujica movie substitutes.",
+    "First episode of each tested road. Try further roads after failures and stop after the first fully verified road; untried roads are not classified.",
+    "Successful MP4s: HTTP range prefix through the Mac proxy and bounded FFprobe metadata check.",
+    "Successful HLS: proxied manifest plus first, middle and last segment prefixes (and init map if present), then bounded FFprobe metadata check.",
+    "A pass requires actual proxied video bytes and FFprobe identifying a video stream; all passes also identified AAC audio.",
+    "No whole-episode playback, no all-episode sweep, no physical TV playback/AVPlay verification. Availability may change.",
+    "The diagnostic run did not change provider settings or the queue and sent no TV playback/controller commands.",
+    "Some probes used the running server's single resolver, so concurrent phone Play commands could receive a busy error. All diagnostic jobs are now finished."
+  ],
+  "results": [
+    {
+      "provider": "AGE",
+      "title": "葬送的芙莉莲",
+      "searches": [
+        {
+          "query": "葬送的芙莉莲",
+          "count": 2,
+          "titles": [
+            "葬送的芙莉莲 第二季",
+            "葬送的芙莉莲"
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road": "Source 1",
+          "episode": "第01集",
+          "status": "fail",
+          "error": "Video source at kjjsaas-sh.oss-cn-shanghai.aliyuncs.com returned HTTP 403. Try another source or provider.",
+          "elapsedMs": 45017
+        },
+        {
+          "road": "Source 2",
+          "episode": "第01集",
+          "status": "fail",
+          "error": "Video source at vip.ffzy-plays.com failed its TLS connection. Try another source or provider.",
+          "elapsedMs": 45014
+        },
+        {
+          "road": "Source 3",
+          "episode": "第01集",
+          "status": "fail",
+          "error": "Video source at c1.rrcdnbf5.com returned HTTP 404. Try another source or provider.",
+          "elapsedMs": 45012
+        },
+        {
+          "road": "Source 4",
+          "episode": "第1集",
+          "status": "pass",
+          "format": "hls",
+          "checks": [
+            {
+              "status": 200,
+              "bytes": 16019
+            },
+            {
+              "status": 200,
+              "bytes": 16021
+            },
+            {
+              "status": 200,
+              "bytes": 16019
+            }
+          ],
+          "streams": [
+            {
+              "codec_name": "h264",
+              "codec_type": "video",
+              "width": 1920,
+              "height": 1080
+            },
+            {
+              "codec_name": "aac",
+              "codec_type": "audio"
+            }
+          ],
+          "duration": 1559.916676,
+          "elapsedMs": 10982
+        }
+      ],
+      "status": "pass",
+      "matchedTitle": "葬送的芙莉莲",
+      "availableRoads": [
+        {
+          "name": "Source 1",
+          "episodes": 28
+        },
+        {
+          "name": "Source 2",
+          "episodes": 28
+        },
+        {
+          "name": "Source 3",
+          "episodes": 28
+        },
+        {
+          "name": "Source 4",
+          "episodes": 28
+        },
+        {
+          "name": "Source 5",
+          "episodes": 28
+        },
+        {
+          "name": "Source 6",
+          "episodes": 28
+        }
+      ],
+      "workingRoad": "Source 4",
+      "elapsedMs": 147090
+    },
+    {
+      "provider": "AGE",
+      "title": "命运石之门",
+      "searches": [
+        {
+          "query": "命运石之门",
+          "count": 4,
+          "titles": [
+            "命运石之门0",
+            "命运石之门",
+            "命运石之门 聪明睿智的认知计算",
+            "命运石之门 负荷领域的既视感"
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road": "Source 1",
+          "episode": "第01集",
+          "status": "fail",
+          "error": "Video source at kjjsaas-sh.oss-cn-shanghai.aliyuncs.com returned HTTP 403. Try another source or provider.",
+          "elapsedMs": 45015
+        },
+        {
+          "road": "Source 2",
+          "episode": "第01集",
+          "status": "fail",
+          "error": "Video source at vip.ffzy-play6.com blocks playback from this Mac's region (HTTP 403). Choose another provider.",
+          "elapsedMs": 45013
+        },
+        {
+          "road": "Source 3",
+          "episode": "第01集",
+          "status": "fail",
+          "error": "Video source at p.bvvvvvvvvv1f.com failed its TLS connection. Try another source or provider.",
+          "elapsedMs": 45012
+        },
+        {
+          "road": "Source 4",
+          "episode": "第01集",
+          "status": "pass",
+          "format": "hls",
+          "checks": [
+            {
+              "status": 200,
+              "bytes": 16021
+            },
+            {
+              "status": 200,
+              "bytes": 16021
+            },
+            {
+              "status": 200,
+              "bytes": 17312
+            }
+          ],
+          "streams": [
+            {
+              "codec_name": "h264",
+              "codec_type": "video",
+              "width": 1920,
+              "height": 1080
+            },
+            {
+              "codec_name": "aac",
+              "codec_type": "audio"
+            }
+          ],
+          "duration": 1436.999998,
+          "elapsedMs": 8302
+        }
+      ],
+      "status": "pass",
+      "matchedTitle": "命运石之门",
+      "availableRoads": [
+        {
+          "name": "Source 1",
+          "episodes": 26
+        },
+        {
+          "name": "Source 2",
+          "episodes": 26
+        },
+        {
+          "name": "Source 3",
+          "episodes": 25
+        },
+        {
+          "name": "Source 4",
+          "episodes": 25
+        }
+      ],
+      "workingRoad": "Source 4",
+      "elapsedMs": 144038
+    },
+    {
+      "provider": "AGE",
+      "title": "死亡笔记",
+      "searches": [
+        {
+          "query": "死亡笔记",
+          "count": 3,
+          "titles": [
+            "DEATH NOTE",
+            "死亡笔记特别篇 L的继承者",
+            "DEATH NOTE 幻影之神"
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road": "Source 1",
+          "episode": "第1集",
+          "status": "fail",
+          "error": "Video source at kjjsaas-sh.oss-cn-shanghai.aliyuncs.com returned HTTP 403. Try another source or provider.",
+          "elapsedMs": 45011
+        },
+        {
+          "road": "Source 2",
+          "episode": "第01集",
+          "status": "fail",
+          "error": "Video source at c1.ddbbffcdn.com failed its TLS connection. Try another source or provider.",
+          "elapsedMs": 45012
+        },
+        {
+          "road": "Source 3",
+          "episode": "第1集",
+          "status": "pass",
+          "format": "hls",
+          "checks": [
+            {
+              "status": 200,
+              "bytes": 16021
+            },
+            {
+              "status": 200,
+              "bytes": 16021
+            },
+            {
+              "status": 200,
+              "bytes": 13552
+            }
+          ],
+          "streams": [
+            {
+              "codec_name": "h264",
+              "codec_type": "video",
+              "width": 1280,
+              "height": 720
+            },
+            {
+              "codec_name": "aac",
+              "codec_type": "audio"
+            }
+          ],
+          "duration": 1376.958346,
+          "elapsedMs": 8641
+        }
+      ],
+      "status": "pass",
+      "matchedTitle": "DEATH NOTE",
+      "availableRoads": [
+        {
+          "name": "Source 1",
+          "episodes": 37
+        },
+        {
+          "name": "Source 2",
+          "episodes": 37
+        },
+        {
+          "name": "Source 3",
+          "episodes": 37
+        },
+        {
+          "name": "Source 4",
+          "episodes": 37
+        }
+      ],
+      "workingRoad": "Source 3",
+      "elapsedMs": 99299
+    },
+    {
+      "provider": "AGE",
+      "title": "ave mujica",
+      "searches": [
+        {
+          "query": "ave mujica",
+          "count": 2,
+          "titles": [
+            "颂乐人偶 剧场版",
+            "BanG Dream! Ave Mujica"
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road": "Source 4",
+          "episode": "第01集",
+          "status": "fail",
+          "error": "Video source at v11.ppqrrs.com returned HTTP 403. Try another source or provider.",
+          "elapsedMs": 45015
+        },
+        {
+          "road": "Source 3",
+          "episode": "第01集",
+          "status": "fail",
+          "error": "Video source at p.bvvvvvvv7f.com failed its TLS connection. Try another source or provider.",
+          "elapsedMs": 45010
+        },
+        {
+          "road": "Source 1",
+          "episode": "第01集",
+          "status": "fail",
+          "error": "Video source at kjjsaas-sh.oss-cn-shanghai.aliyuncs.com returned HTTP 403. Try another source or provider.",
+          "elapsedMs": 45013
+        },
+        {
+          "road": "Source 2",
+          "episode": "第01集",
+          "status": "fail",
+          "error": "Video source at vip.ffzy-plays.com failed its TLS connection. Try another source or provider.",
+          "elapsedMs": 45012
+        },
+        {
+          "road": "Source 5",
+          "episode": "第1集",
+          "status": "pass",
+          "format": "hls",
+          "checks": [
+            {
+              "status": 200,
+              "bytes": 16019
+            },
+            {
+              "status": 200,
+              "bytes": 16019
+            },
+            {
+              "status": 200,
+              "bytes": 16021
+            }
+          ],
+          "streams": [
+            {
+              "codec_name": "h264",
+              "codec_type": "video",
+              "width": 1920,
+              "height": 1080
+            },
+            {
+              "codec_name": "aac",
+              "codec_type": "audio"
+            }
+          ],
+          "duration": 1420.000006,
+          "elapsedMs": 8846
+        }
+      ],
+      "status": "pass",
+      "matchedTitle": "BanG Dream! Ave Mujica",
+      "availableRoads": [
+        {
+          "name": "Source 1",
+          "episodes": 13
+        },
+        {
+          "name": "Source 2",
+          "episodes": 13
+        },
+        {
+          "name": "Source 3",
+          "episodes": 13
+        },
+        {
+          "name": "Source 4",
+          "episodes": 13
+        },
+        {
+          "name": "Source 5",
+          "episodes": 13
+        },
+        {
+          "name": "Source 6",
+          "episodes": 13
+        },
+        {
+          "name": "Source 7",
+          "episodes": 6
+        }
+      ],
+      "workingRoad": "Source 5",
+      "elapsedMs": 189607
+    },
+    {
+      "provider": "MXdm",
+      "title": "葬送的芙莉莲",
+      "searches": [
+        {
+          "query": "葬送的芙莉莲",
+          "count": 0,
+          "error": "Source TLS connection failed.",
+          "titles": []
+        }
+      ],
+      "roads": [],
+      "status": "search-error",
+      "error": "Source TLS connection failed.",
+      "elapsedMs": 36
+    },
+    {
+      "provider": "MXdm",
+      "title": "命运石之门",
+      "searches": [
+        {
+          "query": "命运石之门",
+          "count": 0,
+          "error": "Source TLS connection failed.",
+          "titles": []
+        }
+      ],
+      "roads": [],
+      "status": "search-error",
+      "error": "Source TLS connection failed.",
+      "elapsedMs": 29
+    },
+    {
+      "provider": "MXdm",
+      "title": "死亡笔记",
+      "searches": [
+        {
+          "query": "死亡笔记",
+          "count": 0,
+          "error": "Source TLS connection failed.",
+          "titles": []
+        }
+      ],
+      "roads": [],
+      "status": "search-error",
+      "error": "Source TLS connection failed.",
+      "elapsedMs": 43
+    },
+    {
+      "provider": "MXdm",
+      "title": "ave mujica",
+      "searches": [
+        {
+          "query": "ave mujica",
+          "count": 0,
+          "error": "Source TLS connection failed.",
+          "titles": []
+        }
+      ],
+      "roads": [],
+      "status": "search-error",
+      "error": "Source TLS connection failed.",
+      "elapsedMs": 44
+    },
+    {
+      "provider": "DM84",
+      "title": "葬送的芙莉莲",
+      "searches": [
+        {
+          "query": "葬送的芙莉莲",
+          "count": 2,
+          "titles": [
+            "葬送的芙莉莲 第二季",
+            "葬送的芙莉莲"
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road": "Source 1",
+          "episode": "1",
+          "status": "fail",
+          "error": "Video source at image1.ljcdn.com returned HTTP 403. Try another source or provider.",
+          "elapsedMs": 45021
+        },
+        {
+          "road": "Source 2",
+          "episode": "1",
+          "status": "fail",
+          "error": "Video source at vip.dytt-hot.com blocks playback from this Mac's region (HTTP 403). Choose another provider.",
+          "elapsedMs": 6579
+        }
+      ],
+      "status": "fail",
+      "matchedTitle": "葬送的芙莉莲",
+      "availableRoads": [
+        {
+          "name": "Source 1",
+          "episodes": 28
+        },
+        {
+          "name": "Source 2",
+          "episodes": 28
+        }
+      ],
+      "elapsedMs": 52260
+    },
+    {
+      "provider": "DM84",
+      "title": "命运石之门",
+      "searches": [
+        {
+          "query": "命运石之门",
+          "count": 4,
+          "titles": [
+            "命运石之门：聪明睿智的认知计算",
+            "命运石之门0",
+            "命运石之门",
+            "命运石之门剧场版：负荷领域的既视感"
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road": "Source 1",
+          "episode": "1",
+          "status": "fail",
+          "error": "Player API at hhjx.hhplayer.com returned HTTP 400. Its parser could not decode the episode link. Try another source or provider.",
+          "elapsedMs": 45020
+        },
+        {
+          "road": "Source 2",
+          "episode": "1",
+          "status": "fail",
+          "error": "Video source at vip.dytt-hot.com blocks playback from this Mac's region (HTTP 403). Choose another provider.",
+          "elapsedMs": 6981
+        }
+      ],
+      "status": "fail",
+      "matchedTitle": "命运石之门",
+      "availableRoads": [
+        {
+          "name": "Source 1",
+          "episodes": 25
+        },
+        {
+          "name": "Source 2",
+          "episodes": 26
+        }
+      ],
+      "elapsedMs": 52819
+    },
+    {
+      "provider": "DM84",
+      "title": "死亡笔记",
+      "searches": [
+        {
+          "query": "死亡笔记",
+          "count": 1,
+          "titles": [
+            "死亡笔记"
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road": "Source 1",
+          "episode": "1",
+          "status": "pass",
+          "format": "mp4",
+          "checks": [
+            {
+              "status": 206,
+              "bytes": 1024
+            }
+          ],
+          "streams": [
+            {
+              "codec_name": "h264",
+              "codec_type": "video",
+              "width": 1920,
+              "height": 1080
+            },
+            {
+              "codec_name": "aac",
+              "codec_type": "audio"
+            }
+          ],
+          "duration": 1377.1205,
+          "elapsedMs": 4494
+        }
+      ],
+      "status": "pass",
+      "matchedTitle": "死亡笔记",
+      "availableRoads": [
+        {
+          "name": "Source 1",
+          "episodes": 37
+        }
+      ],
+      "workingRoad": "Source 1",
+      "elapsedMs": 5031
+    },
+    {
+      "provider": "DM84",
+      "title": "ave mujica",
+      "searches": [
+        {
+          "query": "ave mujica",
+          "count": 1,
+          "titles": [
+            "BanG Dream! Ave Mujica"
+          ]
+        }
+      ],
+      "roads": [],
+      "status": "details-error",
+      "matchedTitle": "BanG Dream! Ave Mujica",
+      "error": "No episodes found. The source rule may be outdated.",
+      "elapsedMs": 639
+    },
+    {
+      "provider": "moonci",
+      "title": "葬送的芙莉莲",
+      "searches": [
+        {
+          "query": "葬送的芙莉莲",
+          "count": 2,
+          "titles": [
+            "葬送的芙莉莲 第二季",
+            "葬送的芙莉莲"
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road": "Source 1",
+          "episode": "第01话",
+          "status": "pass",
+          "format": "hls",
+          "checks": [
+            {
+              "status": 200,
+              "bytes": 135
+            },
+            {
+              "status": 200,
+              "bytes": 12466
+            },
+            {
+              "status": 200,
+              "bytes": 15965
+            }
+          ],
+          "streams": [
+            {
+              "codec_name": "h264",
+              "codec_type": "video",
+              "width": 1920,
+              "height": 1080
+            },
+            {
+              "codec_name": "aac",
+              "codec_type": "audio"
+            }
+          ],
+          "duration": 1559.933489,
+          "elapsedMs": 8514
+        }
+      ],
+      "status": "pass",
+      "matchedTitle": "葬送的芙莉莲",
+      "availableRoads": [
+        {
+          "name": "Source 1",
+          "episodes": 28
+        },
+        {
+          "name": "Source 2",
+          "episodes": 28
+        }
+      ],
+      "workingRoad": "Source 1",
+      "elapsedMs": 10015
+    },
+    {
+      "provider": "moonci",
+      "title": "命运石之门",
+      "searches": [
+        {
+          "query": "命运石之门",
+          "count": 4,
+          "titles": [
+            "命运石之门 聪明睿智的认知计算",
+            "命运石之门 负荷领域的既视感",
+            "命运石之门",
+            "命运石之门 0"
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road": "Source 1",
+          "episode": "第01话",
+          "status": "fail",
+          "error": "Video source at play.xfvod.pro failed its TLS connection. Try another source or provider.",
+          "elapsedMs": 45010
+        }
+      ],
+      "status": "fail",
+      "matchedTitle": "命运石之门",
+      "availableRoads": [
+        {
+          "name": "Source 1",
+          "episodes": 25
+        }
+      ],
+      "elapsedMs": 45643
+    },
+    {
+      "provider": "moonci",
+      "title": "死亡笔记",
+      "searches": [
+        {
+          "query": "死亡笔记",
+          "count": 1,
+          "titles": [
+            "死亡笔记"
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road": "Source 1",
+          "episode": "第01话",
+          "status": "fail",
+          "error": "Video source at play.xfvod.pro failed its TLS connection. Try another source or provider.",
+          "elapsedMs": 45021
+        }
+      ],
+      "status": "fail",
+      "matchedTitle": "死亡笔记",
+      "availableRoads": [
+        {
+          "name": "Source 1",
+          "episodes": 37
+        }
+      ],
+      "elapsedMs": 46079
+    },
+    {
+      "provider": "moonci",
+      "title": "ave mujica",
+      "searches": [
+        {
+          "query": "ave mujica",
+          "count": 1,
+          "titles": [
+            "BanG Dream! Ave Mujica"
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road": "Source 1",
+          "episode": "第01话",
+          "status": "fail",
+          "error": "Video source at tjdownload.pan.wo.cn returned HTTP 400. Try another source or provider.",
+          "elapsedMs": 45010
+        },
+        {
+          "road": "Source 2",
+          "episode": "第01话",
+          "status": "fail",
+          "error": "Video source at play.xfvod.pro failed its TLS connection. Try another source or provider.",
+          "elapsedMs": 45007
+        },
+        {
+          "road": "Source 3",
+          "episode": "第01话",
+          "status": "fail",
+          "error": "Video source at dl.playxf.top returned HTTP 404. Try another source or provider.",
+          "elapsedMs": 45011
+        }
+      ],
+      "status": "fail",
+      "matchedTitle": "BanG Dream! Ave Mujica",
+      "availableRoads": [
+        {
+          "name": "Source 1",
+          "episodes": 13
+        },
+        {
+          "name": "Source 2",
+          "episodes": 13
+        },
+        {
+          "name": "Source 3",
+          "episodes": 13
+        }
+      ],
+      "elapsedMs": 136003
+    },
+    {
+      "provider": "sorani",
+      "title": "葬送的芙莉莲",
+      "searches": [
+        {
+          "query": "葬送的芙莉莲",
+          "count": 0,
+          "error": "Source timed out.",
+          "titles": []
+        }
+      ],
+      "roads": [],
+      "status": "search-error",
+      "error": "Source timed out.",
+      "elapsedMs": 15005
+    },
+    {
+      "provider": "sorani",
+      "title": "命运石之门",
+      "searches": [
+        {
+          "query": "命运石之门",
+          "count": 0,
+          "error": "Source timed out.",
+          "titles": []
+        }
+      ],
+      "roads": [],
+      "status": "search-error",
+      "error": "Source timed out.",
+      "elapsedMs": 15010
+    },
+    {
+      "provider": "sorani",
+      "title": "死亡笔记",
+      "searches": [
+        {
+          "query": "死亡笔记",
+          "count": 0,
+          "error": "Source timed out.",
+          "titles": []
+        }
+      ],
+      "roads": [],
+      "status": "search-error",
+      "error": "Source timed out.",
+      "elapsedMs": 15008
+    },
+    {
+      "provider": "sorani",
+      "title": "ave mujica",
+      "searches": [
+        {
+          "query": "ave mujica",
+          "count": 0,
+          "error": "Source timed out.",
+          "titles": []
+        }
+      ],
+      "roads": [],
+      "status": "search-error",
+      "error": "Source timed out.",
+      "elapsedMs": 15007
+    },
+    {
+      "provider": "7sefun",
+      "title": "葬送的芙莉莲",
+      "searches": [
+        {
+          "query": "葬送的芙莉莲",
+          "count": 2,
+          "titles": [
+            "葬送的芙莉莲第二季",
+            "葬送的芙莉莲"
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road": "Source 2",
+          "episode": "第01集",
+          "status": "fail",
+          "error": "Video source at groupvideo.photo.qq.com returned HTTP 404. Try another source or provider.",
+          "elapsedMs": 45015
+        },
+        {
+          "road": "Source 4",
+          "episode": "第01集",
+          "status": "pass",
+          "format": "mp4",
+          "checks": [
+            {
+              "status": 206,
+              "bytes": 1024
+            }
+          ],
+          "streams": [
+            {
+              "codec_name": "h264",
+              "codec_type": "video",
+              "width": 1920,
+              "height": 1080
+            },
+            {
+              "codec_name": "aac",
+              "codec_type": "audio"
+            }
+          ],
+          "duration": 1559.979002,
+          "elapsedMs": 8621
+        }
+      ],
+      "status": "pass",
+      "matchedTitle": "葬送的芙莉莲",
+      "availableRoads": [
+        {
+          "name": "Source 2",
+          "episodes": 28
+        },
+        {
+          "name": "Source 4",
+          "episodes": 28
+        }
+      ],
+      "workingRoad": "Source 4",
+      "elapsedMs": 55335
+    },
+    {
+      "provider": "7sefun",
+      "title": "命运石之门",
+      "searches": [
+        {
+          "query": "命运石之门",
+          "count": 7,
+          "titles": [
+            "命运石之门：聪明睿智的认知计算",
+            "命运石之门",
+            "命运石之门剧场版：负荷领域的既视感",
+            "命运石之门0",
+            "命运石之门23β：境界面上的缺失之环",
+            "命运石之门：横行跋扈的浪荡之徒",
+            "命运石之门0：结晶多形的情人节"
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road": "Source 2",
+          "episode": "第01集",
+          "status": "pass",
+          "format": "mp4",
+          "checks": [
+            {
+              "status": 206,
+              "bytes": 1024
+            }
+          ],
+          "streams": [
+            {
+              "codec_name": "h264",
+              "codec_type": "video",
+              "width": 1280,
+              "height": 720
+            },
+            {
+              "codec_name": "aac",
+              "codec_type": "audio"
+            }
+          ],
+          "duration": 1436.97068,
+          "elapsedMs": 6268
+        }
+      ],
+      "status": "pass",
+      "matchedTitle": "命运石之门",
+      "availableRoads": [
+        {
+          "name": "Source 2",
+          "episodes": 25
+        },
+        {
+          "name": "Source 4",
+          "episodes": 25
+        }
+      ],
+      "workingRoad": "Source 2",
+      "elapsedMs": 8004
+    },
+    {
+      "provider": "7sefun",
+      "title": "死亡笔记",
+      "searches": [
+        {
+          "query": "死亡笔记",
+          "count": 3,
+          "titles": [
+            "死亡笔记",
+            "死亡笔记特别篇2：L的继承者",
+            "死亡笔记特别篇：神之幻觉"
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road": "Source 2",
+          "episode": "第01集",
+          "status": "pass",
+          "format": "mp4",
+          "checks": [
+            {
+              "status": 206,
+              "bytes": 1024
+            }
+          ],
+          "streams": [
+            {
+              "codec_name": "h264",
+              "codec_type": "video",
+              "width": 1920,
+              "height": 1080
+            },
+            {
+              "codec_name": "aac",
+              "codec_type": "audio"
+            }
+          ],
+          "duration": 1377.1205,
+          "elapsedMs": 10010
+        }
+      ],
+      "status": "pass",
+      "matchedTitle": "死亡笔记",
+      "availableRoads": [
+        {
+          "name": "Source 2",
+          "episodes": 37
+        },
+        {
+          "name": "Source 4",
+          "episodes": 39
+        }
+      ],
+      "workingRoad": "Source 2",
+      "elapsedMs": 11593
+    },
+    {
+      "provider": "7sefun",
+      "title": "ave mujica",
+      "searches": [
+        {
+          "query": "ave mujica",
+          "count": 3,
+          "titles": [
+            "BanG Dream! Ave Mujica",
+            "BanG Dream! Ave Mujica",
+            "BanG Dream! 颂乐人偶"
+          ]
+        }
+      ],
+      "roads": [
+        {
+          "road": "Source 2",
+          "episode": "第01集",
+          "status": "pass",
+          "format": "mp4",
+          "checks": [
+            {
+              "status": 206,
+              "bytes": 1024
+            }
+          ],
+          "streams": [
+            {
+              "codec_name": "h264",
+              "codec_type": "video",
+              "width": 1920,
+              "height": 1080
+            },
+            {
+              "codec_name": "aac",
+              "codec_type": "audio"
+            }
+          ],
+          "duration": 1422.016,
+          "elapsedMs": 20713
+        }
+      ],
+      "status": "pass",
+      "matchedTitle": "BanG Dream! Ave Mujica",
+      "availableRoads": [
+        {
+          "name": "Source 2",
+          "episodes": 13
+        }
+      ],
+      "workingRoad": "Source 2",
+      "elapsedMs": 22443
+    }
+  ]
+}

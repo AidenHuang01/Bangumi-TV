@@ -1,0 +1,8 @@
+dist/
+.tools/
+node_modules/
+server/media/*
+!server/media/.gitkeep
+server/sources.json
+*.log
+.DS_Store

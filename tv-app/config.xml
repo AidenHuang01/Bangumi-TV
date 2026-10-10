@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets"
+        id="https://bangumi-tv.local/app" version="0.3.0" viewmodes="fullscreen">
+  <tizen:application id="BgmiTVpoc1.BangumiTV" package="BgmiTVpoc1" required_version="2.4"/>
+  <content src="index.html"/>
+  <name>Bangumi TV POC</name>
+  <icon src="icon.png"/>
+  <tizen:profile name="tv"/>
+  <tizen:privilege name="http://tizen.org/privilege/internet"/>
+  <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+  <access origin="*" subdomains="true"/>
+  <tizen:content-security-policy>default-src 'self' http: https:; script-src 'self' http://tizen.org https://tizen.org 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src http: https:; media-src http: https: blob:; object-src 'self'; img-src 'self' data:;</tizen:content-security-policy>
+  <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable" encryption="disable" install-location="auto" hwkey-event="enable"/>
+  <feature name="http://tizen.org/feature/screen.size.all"/>
+  <tizen:metadata key="http://tizen.org/metadata/app_ui_type/base_screen_resolution" value="fullscreen"/>
+</widget>

@@ -1,0 +1,53 @@
+* { box-sizing: border-box; }
+:root { color-scheme: dark; }
+[hidden] { display: none !important; }
+body { margin: 0; background: radial-gradient(ellipse at top right, #20372f, transparent 45%), #10161f; color: #e9edf2; font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; min-height: 100vh; }
+main { max-width: 720px; margin: auto; padding: max(24px, env(safe-area-inset-top)) 18px max(30px, env(safe-area-inset-bottom)); }
+header, .section-heading, .input-row, .transport, nav, .queue-actions { display: flex; align-items: center; gap: 10px; }
+header, .section-heading { justify-content: space-between; }
+header { margin-bottom: 24px; flex-wrap: wrap; }
+h1 { margin: 6px 0 0; font-size: 29px; letter-spacing: -1px; }
+h1 span { color: #91a5a6; font-weight: 400; }
+h2 { font-size: 22px; line-height: 1.35; margin: 8px 0 14px; overflow-wrap: anywhere; }
+.eyebrow { font-size: 10px; letter-spacing: 1.6px; font-weight: 700; color: #edb880; }
+.badge { border: 1px solid #516560; color: #afc6be; border-radius: 24px; font-size: 12px; padding: 7px 12px; white-space: nowrap; }
+.badge.online { color: #7de4c4; border-color: #6cae96; }
+.panel { background: #18232de6; border: 1px solid #34463e; border-radius: 18px; padding: 20px; margin-bottom: 20px; }
+button, input, select { font: inherit; border-radius: 10px; min-height: 44px; }
+button { border: 1px solid #38485b; background: #263342; color: #e9edf2; padding: 10px 14px; cursor: pointer; touch-action: manipulation; }
+button:disabled { opacity: .4; cursor: default; }
+button.primary { background: #7de4c4; border-color: #7de4c4; color: #112820; font-weight: 650; }
+button.text-button { border-color: transparent; background: transparent; color: #9ae4ce; padding: 8px 0; font-size: 14px; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid #7de4c4; outline-offset: 3px; }
+label { display: block; color: #afc3bc; font-size: 13px; margin-bottom: 8px; }
+input, select { border: 1px solid #526273; background: #101923; color: #e9edf2; padding: 11px; width: 100%; }
+.input-row input { flex: 1; width: 0; min-width: 0; }
+.input-row button { flex-shrink: 0; }
+.input-row + label { margin-top: 20px; }
+.hint { color: #a8b9c4; font-size: 14px; white-space: pre-line; overflow-wrap: anywhere; }
+.time { text-align: right; color: #8ca49d; font-size: 12px; margin: 6px 0 16px; }
+.progress { height: 4px; background: #354742; border-radius: 4px; overflow: hidden; }
+.progress div { height: 100%; width: 0; background: #7de4c4; }
+.transport { justify-content: space-between; }
+.transport button { flex: 1; padding: 10px 7px; }
+nav { margin-bottom: 20px; border-bottom: 1px solid #34463e; padding-bottom: 14px; }
+nav button { flex: 1; border-color: transparent; }
+nav .selected { background: #29473d; color: #a5f1d9; border-color: #76bca4; }
+#queue-count { padding: 1px 6px; border-radius: 6px; background: #101b23; font-size: 13px; }
+.result { display: block; text-align: left; width: 100%; margin-bottom: 12px; padding: 18px; }
+.result strong { display: block; font-size: 18px; }
+.result span { font-size: 13px; color: #a3b6bf; }
+.episode-heading { margin: 20px 0 12px; font-size: 14px; color: #b3c7be; }
+.episode, .queue-item { padding: 16px; border: 1px solid #33433d; border-radius: 14px; margin-bottom: 12px; background: #18232d; }
+.episode { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.episode .actions { display: flex; gap: 8px; }
+.episode button { font-size: 13px; }
+.queue-item p { margin: 0 0 12px; overflow-wrap: anywhere; }
+.queue-actions { justify-content: flex-end; }
+.queue-actions button { font-size: 13px; }
+.full { width: 100%; margin: 0 0 18px; }
+#notice { position: sticky; bottom: max(12px, env(safe-area-inset-bottom)); background: #254238; color: #e5fff5; padding: 14px 18px; border: 1px solid #66887b; border-radius: 12px; box-shadow: 0 8px 20px #0006; }
+#notice:empty { display: none; }
+#notice.error { background: #4c3030; border-color: #a26969; }
+footer { color: #7f9795; font-size: 12px; margin-top: 28px; }
+@media (max-width: 360px) { .panel { padding: 16px; } h1 { font-size: 25px; } .episode .actions { width: 100%; } .episode .actions button { flex: 1; } }

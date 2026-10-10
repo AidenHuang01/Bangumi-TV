@@ -1,0 +1,14 @@
+{
+  "sources": [
+    {
+      "id": "my-episode",
+      "title": "My episode — replace the URL before enabling",
+      "enabled": false,
+      "url": "https://example.com/episode/master.m3u8",
+      "referer": "https://example.com/",
+      "userAgent": "Mozilla/5.0",
+      "cookie": "",
+      "format": "hls"
+    }
+  ]
+}

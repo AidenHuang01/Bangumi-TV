@@ -1,0 +1,18 @@
+{
+  "name": "bangumi-tv-poc",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server/index.mjs",
+    "demo": "node server/tools/make-demo.mjs",
+    "test": "node --test server/test/*.test.mjs tv-app/test/*.test.mjs phone-app/test/*.test.mjs",
+    "smoke:anime": "node server/tools/smoke-anime.mjs",
+    "package:tv": "node scripts/package-tv.mjs"
+  },
+  "dependencies": {
+    "jsdom": "26.1.0",
+    "playwright-core": "1.56.1"
+  }
+}

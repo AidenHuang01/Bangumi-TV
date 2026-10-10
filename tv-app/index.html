@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Bangumi TV</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="$WEBAPIS/webapis/webapis.js"></script>
+  <script src="defaults.js"></script>
+</head>
+<body>
+  <main id="library-screen">
+    <header>
+      <div class="brand"><img src="icon.svg" alt=""><span>bangumi<span class="brand-light"> / tv</span></span><span class="poc">POC</span></div>
+      <div class="header-actions"><span id="connection-badge" class="badge">Disconnected</span><button id="refresh">Refresh</button><button id="settings">Server settings</button></div>
+    </header>
+    <section class="hero">
+      <div class="eyebrow">YOUR MAC. YOUR BIG SCREEN.</div>
+      <h1>Anime on your big screen.</h1>
+      <p>Search on your Mac. Play the original stream on your TV.</p>
+      <div class="signal"><span class="signal-dot"></span><span id="engine-label">Checking player…</span><span class="signal-divider">/</span><span>Original quality</span></div>
+      <p id="phone-controller" class="phone-hint">Phone control is available in the installed TV app.</p>
+    </section>
+    <nav class="view-tabs"><button id="anime-tab" class="primary">Find anime</button><button id="library-tab">Local library / demo</button></nav>
+    <section id="anime-view">
+      <div class="search-row"><label for="search-query">Anime title</label><input id="search-query" type="text" value="葬送的芙莉莲" maxlength="100" autocomplete="off"><button id="search-anime" class="primary">Search</button></div>
+      <div id="providers" class="providers"><button id="all-providers" class="selected">All sources</button></div>
+      <p id="search-status" role="status">Choose a title and search. Source availability varies.</p>
+      <div id="search-results" class="cards"></div>
+    </section>
+    <section id="episodes-view" class="hidden">
+      <div class="section-heading"><h2 id="anime-title"></h2><button id="back-results">Back to results</button></div>
+      <p id="episodes-status" role="status"></p>
+      <div id="episode-roads"></div>
+    </section>
+    <section id="local-view" class="library hidden">
+      <div class="section-heading"><h2>Your library</h2><span id="item-count">0 videos</span></div>
+      <p id="library-status" role="status">Connect to your Mac to get started.</p>
+      <div id="cards" class="cards"></div>
+    </section>
+    <footer><span><kbd>Arrows</kbd> Browse &nbsp; <kbd>OK</kbd> Select</span><span id="server-label">Mac server not connected</span></footer>
+  </main>
+  <section id="setup" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="setup-title">
+    <div class="setup-card">
+      <div class="eyebrow">ONE-TIME CONNECTION</div>
+      <h2 id="setup-title">Connect to your Mac</h2>
+      <p>Enter the “TV server address” printed by the server. Both devices need to be on the same home network.</p>
+      <label for="server-address">Mac server address</label>
+      <input id="server-address" type="url" placeholder="http://192.168.1.20:8787" autocomplete="off" spellcheck="false">
+      <p id="setup-status" class="setup-status" role="status"></p>
+      <div class="setup-actions"><button id="connect" class="primary">Connect &amp; open library</button><button id="cancel-setup">Cancel</button></div>
+      <small>This address is saved on this TV.</small>
+    </div>
+  </section>
+  <section id="player-screen" class="hidden">
+    <object id="av-player" type="application/avplayer"></object>
+    <video id="browser-player" playsinline></video>
+    <div id="subtitle" class="subtitle"></div>
+    <div id="playback-message" class="playback-message hidden" role="status"></div>
+    <div id="hud" class="hud">
+      <div class="now-playing"><div><div class="eyebrow">NOW PLAYING</div><h2 id="playing-title"></h2></div><span id="playback-engine" class="badge"></span></div>
+      <div class="timeline"><div id="progress-fill"></div></div>
+      <div class="transport"><span id="playback-time">0:00 / 0:00</span><div><button id="seek-back">−10 sec</button><button id="toggle-play" class="primary">Pause</button><button id="seek-forward">+10 sec</button><button id="toggle-subtitles">Subtitles: on</button><button id="stop-play">Back to library</button></div></div>
+      <p class="remote-hint">OK: play / pause · Left / Right: seek · Down: controls · Back: library</p>
+      <p id="phone-controller-player" class="remote-hint"></p>
+    </div>
+  </section>
+  <script src="app.js"></script>
+</body>
+</html>

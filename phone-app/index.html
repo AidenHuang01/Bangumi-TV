@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#10161f">
+  <title>Bangumi · TV remote</title>
+  <link rel="stylesheet" href="/remote/style.css">
+</head>
+<body>
+  <main>
+    <header><div><span class="eyebrow">YOUR PHONE. YOUR BIG SCREEN.</span><h1>bangumi<span> / remote</span></h1></div><span id="connection" class="badge">Connecting</span></header>
+    <div id="controller-panel">
+      <section class="panel now-playing">
+        <div class="section-heading"><span class="eyebrow">ON YOUR TV</span><span class="hint">No pairing needed</span></div>
+        <h2 id="now-title">Nothing playing</h2><p id="now-status" class="hint">Open the app on the TV to connect.</p>
+        <div class="progress"><div id="progress-fill"></div></div><p id="playback-time" class="time">0:00 / 0:00</p>
+        <div class="transport"><button id="seek-back" aria-label="Seek back 10 seconds">−10s</button><button id="toggle-play" class="primary">Pause</button><button id="seek-forward" aria-label="Seek forward 10 seconds">+10s</button><button id="stop">Stop</button></div>
+      </section>
+      <nav aria-label="Controller views"><button id="search-tab" class="selected">Find anime</button><button id="queue-tab">Queue <span id="queue-count">0</span></button></nav>
+      <section id="search-panel">
+        <form id="search-form" class="panel"><label for="query">Anime title</label><div class="input-row"><input id="query" type="search" maxlength="100" autocomplete="off" value="葬送的芙莉莲" placeholder="Search anime…" required><button id="search-button" class="primary">Search</button></div><label for="provider">Search source</label><select id="provider"><option value="all">All sources</option></select></form>
+        <p id="search-status" class="hint" role="status">Choose a title. Video plays only on the TV.</p>
+        <div id="results"></div>
+        <section id="episodes-panel" hidden>
+          <button id="back-results" class="text-button">← Back to results</button><h2 id="show-title"></h2><p id="show-status" class="hint" role="status"></p>
+          <label for="road">Playback source</label><select id="road"></select><div class="section-heading episode-heading"><span id="episode-count"></span><button id="queue-all">Queue this source</button></div><div id="episodes"></div>
+        </section>
+      </section>
+      <section id="queue-panel" hidden>
+        <div class="section-heading"><h2>Up next</h2><button id="clear-queue" class="text-button">Clear queue</button></div>
+        <p class="hint">Episodes play in order after the current episode ends. Additions wait until you press Play next if nothing is playing.</p>
+        <button id="play-next" class="primary full">Play next on TV</button><div id="queue"></div>
+        <p class="hint">This shared home queue is kept on the Mac. Restarting the Mac server clears it.</p>
+      </section>
+    </div>
+    <p id="notice" role="status" aria-live="polite"></p>
+    <footer>No casting. No phone video playback.<br>Use sources you’re authorized to access. Keep this server on your trusted home network.</footer>
+  </main>
+  <script src="/remote/app.js"></script>
+</body>
+</html>
