@@ -29,6 +29,7 @@
   var remotePlaybackId = null;
   var remoteTerminal = null;
   var remoteError = '';
+  var remoteSeek = null, seekTimer, seekTicket = 0;
   var receiverClient = recall('bangumi-tv-client') || 'tv-' + Date.now() + '-' + Math.random().toString(36).slice(2);
   var receiverBoot = Date.now() + '-' + Math.random().toString(36).slice(2);
   store('bangumi-tv-client', receiverClient);
@@ -59,7 +60,7 @@
     receiverBusy = true;
     var base = server;
     if (!receiverSession) {
-      tvPost('/api/tv/register', { clientId: receiverClient, bootId: receiverBoot, version: '0.3.0' }, function (error, result) {
+      tvPost('/api/tv/register', { clientId: receiverClient, bootId: receiverBoot, version: '0.5.0' }, function (error, result) {
         receiverBusy = false;
         if (base !== server) return;
         if (error || !result.session) { receiverLabel(error ? error.message : 'Phone controller needs the updated Mac server.'); return; }
@@ -72,7 +73,7 @@
     var terminal = remoteTerminal;
     tvPost('/api/tv/poll', { applied: receiverApplied, playbackId: remotePlaybackId,
       status: !current ? 'idle' : remoteError ? 'error' : preparing ? 'loading' : paused() ? 'paused' : 'playing',
-      title: current ? current.title : '', position: position(), duration: duration(), error: remoteError, terminal: terminal }, function (error, result) {
+      title: current ? current.title : '', position: position(), duration: duration(), error: remoteError, seek: remoteSeek, terminal: terminal }, function (error, result) {
       receiverBusy = false;
       if (base !== server) return;
       if (error) {
@@ -356,6 +357,7 @@
     remotePlaybackId = null; remoteError = '';
     playGeneration++;
     current = null; preparing = false; cues = []; seeking = false;
+    seekTicket++; clearTimeout(seekTimer); remoteSeek = null;
     clearInterval(subtitleTimer); clearTimeout(nativeSubtitleTimer); clearTimeout(hideTimer);
     screenSaver(true);
     if (nativePlayer) { try { nativePlayer.close(); } catch (e) {} }
@@ -430,17 +432,51 @@
   }
   var seeking = false;
   function seek(delta) {
-    if (!current || preparing || seeking) return;
+    if (!current || preparing) return;
+    if (seeking) { message('A seek is in progress…'); return; }
     var length = duration();
     if (!isFinite(length) || length <= 0) { message('This stream does not offer seeking.'); revealControls(false); return; }
-    var target = Math.max(0, Math.min(length - 500, position() + delta * 1000));
+    var from = position(), target = Math.round(Math.max(1, Math.min(Math.max(1, length - 1000), from + delta * 1000)));
+    var generation = playGeneration, ticket = ++seekTicket, attempt = 0;
+    remoteSeek = { state: 'seeking', from: from, target: target, actual: from, error: '' };
+    function valid() { return generation === playGeneration && ticket === seekTicket && current; }
+    function finish(error) {
+      if (!valid()) return;
+      clearTimeout(seekTimer); seeking = false;
+      remoteSeek = { state: error ? 'error' : 'done', from: from, target: target, actual: position(), error: error || '' };
+      message(error || ''); updateTime(); revealControls(false);
+    }
+    function run(absolute) {
+      var number = ++attempt;
+      clearTimeout(seekTimer);
+      function failed(error) {
+        if (!valid() || number !== attempt) return;
+        if (!absolute) return run(true);
+        finish('Seek failed: ' + (error && (error.message || error.name) || 'TV did not confirm the jump') + '. Try another playback source.');
+      }
+      function success() {
+        if (!valid() || number !== attempt) return;
+        clearTimeout(seekTimer);
+        seekTimer = setTimeout(function () {
+          if (!valid() || number !== attempt) return;
+          if (Math.abs(position() - target) > 5000) failed(new Error('Position did not change'));
+          else finish();
+        }, 750);
+      }
+      seekTimer = setTimeout(function () { failed(new Error('Seek timed out')); }, 6000);
+      try {
+        if (absolute) nativePlayer.seekTo(target, success, failed);
+        else if (target >= from) nativePlayer.jumpForward(target - from, success, failed);
+        else nativePlayer.jumpBackward(from - target, success, failed);
+      } catch (error) { failed(error); }
+    }
     try {
       if (nativePlayer) {
-        seeking = true;
-        nativePlayer.seekTo(target, function () { seeking = false; updateTime(); }, function () { seeking = false; message('Seeking failed for this stream.'); });
-      } else video.currentTime = target / 1000;
+        seeking = true; message('Seeking…');
+        run(typeof nativePlayer.jumpForward !== 'function' || typeof nativePlayer.jumpBackward !== 'function');
+      } else { video.currentTime = target / 1000; finish(); }
       revealControls(false);
-    } catch (error) { seeking = false; message('Seeking failed: ' + error.message); }
+    } catch (error) { finish('Seeking failed: ' + error.message); }
   }
   function parseVTT(text) {
     function stamp(value) {

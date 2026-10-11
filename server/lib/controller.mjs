@@ -83,6 +83,11 @@ export function createController({ discovery, now = Date.now } = {}) {
       receiver.title = typeof input.title === 'string' ? input.title.slice(0, 240) : '';
       receiver.position = Math.max(0, Math.min(Number(input.position) || 0, 86400000));
       receiver.duration = Math.max(0, Math.min(Number(input.duration) || 0, 86400000));
+      const seek = input.seek;
+      receiver.seek = seek && ['seeking', 'done', 'error'].includes(seek.state) ? {
+        state: seek.state, from: Math.max(0, Number(seek.from) || 0), target: Math.max(0, Number(seek.target) || 0),
+        actual: Math.max(0, Number(seek.actual) || 0), error: String(seek.error || '').slice(0, 300)
+      } : null;
       receiver.playbackId = input.playbackId;
       if (active && input.playbackId === active.playbackId && phase !== 'resolving') {
         phase = receiver.status;
@@ -97,7 +102,7 @@ export function createController({ discovery, now = Date.now } = {}) {
     state() {
       return { ...this.info(), revision, phase, error: lastError, active: publicEntry(active),
         tv: { status: receiver?.status || 'idle', title: receiver?.title || '',
-          position: receiver?.position || 0, duration: receiver?.duration || 0 },
+          position: receiver?.position || 0, duration: receiver?.duration || 0, seek: receiver?.seek || null },
         queue: queue.map(publicEntry) };
     },
     mutate(input) {

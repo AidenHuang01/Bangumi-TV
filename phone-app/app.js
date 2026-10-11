@@ -46,7 +46,7 @@
     if (state && value.revision < state.revision) return;
     state = value; connection(value.tvOnline);
     $('now-title').textContent = value.active?.title || value.tv.title || 'Nothing playing';
-    $('now-status').textContent = value.error || (!value.tvOnline ? 'TV offline. Open the updated Bangumi TV app on the TV.' :
+    $('now-status').textContent = value.error || value.tv.seek?.error || (value.tv.seek?.state === 'seeking' ? 'Seeking on TV…' : '') || (!value.tvOnline ? 'TV offline. Open the updated Bangumi TV app on the TV.' :
       value.phase === 'resolving' ? 'Finding the stream on your Mac… up to 45 seconds.' :
       value.phase === 'loading' ? 'Loading on the TV…' : value.tv.status === 'playing' ? 'Playing on TV' :
       value.tv.status === 'paused' ? 'Paused on TV' : 'Ready. Choose an episode or play the queue.');

@@ -70,7 +70,7 @@ function setup(receiver = false) {
     setInterval: callback => { intervals.set(++timerId, callback); return timerId; }, clearInterval: id => intervals.delete(id) };
   vm.runInNewContext(source, context);
   function key(code) { handlers.keydown({ keyCode: code, preventDefault() {} }); }
-  return { elements, calls, key, timeouts, intervals, commands, reports,
+  return { elements, calls, key, timeouts, intervals, commands, reports, avplay,
     poll: () => { for (const callback of [...intervals.values()]) callback(); },
     start: () => elements.cards.children[0].onclick(),
     ready: () => prepared.success(), get prepared() { return prepared; }, get listener() { return listener; } };
@@ -98,6 +98,30 @@ test('a pending prepare callback cannot restart a video after Back', () => {
   const app = setup(); app.start(); const prepare = app.prepared;
   app.key(10009); prepare.success();
   assert.equal(app.calls.filter(call => call[0] === 'play').length, 0);
+});
+
+test('missing seek callbacks unlock retries and report a nonfatal error to the phone', () => {
+  const app = setup(true); app.start(); app.ready();
+  let attempts = 0;
+  app.avplay.seekTo = () => { attempts++; };
+  app.key(417);
+  for (const callback of [...app.timeouts.values()]) callback();
+  app.poll();
+  assert.equal(app.reports.at(-1).seek.state, 'error');
+  assert.equal(app.reports.at(-1).status, 'playing');
+  app.key(417); assert.equal(attempts, 2);
+});
+
+test('relative seek falls back to absolute and late callbacks cannot affect a replacement video', () => {
+  const app = setup(); app.start(); app.ready();
+  app.avplay.jumpForward = (delta, success, error) => error({ name: 'NotSupportedError' });
+  app.avplay.jumpBackward = () => {};
+  app.key(417);
+  assert.ok(app.calls.some(call => call[0] === 'seek' && call[1] === 10000));
+  const callbacks = [...app.timeouts.values()];
+  app.key(10009); app.start(); app.ready();
+  callbacks.forEach(callback => callback());
+  assert.equal(app.elements['playback-message'].classList.contains('hidden'), true);
 });
 
 test('embedded subtitle text survives progress updates and expires at its duration', () => {
