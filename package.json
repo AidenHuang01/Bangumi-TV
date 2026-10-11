@@ -12,6 +12,8 @@
     "test": "node --test server/test/*.test.mjs tv-app/test/*.test.mjs phone-app/test/*.test.mjs",
     "smoke:anime": "node server/tools/smoke-anime.mjs",
     "audit:rules": "node server/tools/audit-rules.mjs",
+    "audit:daily": "node scripts/daily-audit.mjs",
+    "schedule:install": "node scripts/install-daily-audit.mjs",
     "package:tv": "node scripts/package-tv.mjs"
   },
   "dependencies": {

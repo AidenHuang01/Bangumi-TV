@@ -229,6 +229,24 @@ the matching show/episode before loading comments. Without keys, local imports
 and rendering work; online search remains disabled. Real authenticated API
 verification awaits those credentials. See https://doc.dandanplay.com/open/.
 
+### Daily source reports
+
+`npm run audit:daily` checks **each enabled source against ten fixed titles**, using
+episode 1 and at most two playback roads per title. It uses a separate original
+Kazumi worker (8792) and loopback gateway (8785); it never sends TV commands.
+Reports update atomically under ignored `server/data/reports/`, contain stage/
+error/timing/byte-probe results, and are visible on the phone's **源测试** tab.
+A failed catalogue lookup counts as a failed title check, not a successful stream.
+An interrupted run is marked failed and remains inspectable. Runs cannot overlap.
+
+`npm run schedule:install` installs the macOS user LaunchAgent
+`dev.forgetech.bangumi-source-audit` at **05:00 America/Los_Angeles**. The installer
+checks the Mac time zone. The user must be logged in; if the Mac sleeps at 05:00,
+launchd runs the missed job on wake. Caffeinate keeps it awake during the audit.
+The server must be running to read reports from the phone, but audits run without
+the production server. Logs are in `server/data/logs/`. To disable the schedule:
+`launchctl bootout gui/$(id -u)/dev.forgetech.bangumi-source-audit`.
+
 Place a video in `server/media/` and select **Refresh** in the app. Files are
 served directly with byte-range support for seeking. Place a `.vtt` file with the
 same basename alongside it for subtitles: `Episode.mp4` and `Episode.vtt`.

@@ -30,7 +30,7 @@
         <div class="input-row"><input id="danmaku-query" placeholder="Anime title"><button id="danmaku-search">Search</button></div>
         <div id="danmaku-matches"></div>
       </details>
-      <nav aria-label="Controller views"><button id="search-tab" class="selected">Find anime</button><button id="queue-tab">Queue <span id="queue-count">0</span></button></nav>
+      <nav aria-label="Controller views"><button id="search-tab" class="selected">Find anime</button><button id="queue-tab">Queue <span id="queue-count">0</span></button><button id="reports-tab">源测试</button></nav>
       <section id="search-panel">
         <form id="search-form" class="panel"><label for="query">Anime title</label><div class="input-row"><input id="query" type="search" maxlength="100" autocomplete="off" value="葬送的芙莉莲" placeholder="Search anime…" required><button id="search-button" class="primary">Search</button></div><label for="provider">Search source</label><select id="provider"><option value="all">All sources</option></select></form>
         <p id="search-status" class="hint" role="status">Choose a title. Video plays only on the TV.</p>
@@ -45,6 +45,12 @@
         <p class="hint">Episodes play in order after the current episode ends. Additions wait until you press Play next if nothing is playing.</p>
         <button id="play-next" class="primary full">Play next on TV</button><div id="queue"></div>
         <p class="hint">This shared home queue is kept on the Mac. Restarting the Mac server clears it.</p>
+      </section>
+      <section id="reports-panel" hidden>
+        <h2>播放源每日报告</h2>
+        <p class="hint">每天 05:00（洛杉矶时间）· 每个启用的来源测试 10 部番的第 1 集。通过表示取得视频数据，不代表所有集数或电视解码均可用。</p>
+        <div class="input-row"><select id="report-select" aria-label="测试报告日期"></select><button id="report-refresh">Refresh</button></div>
+        <p id="report-status" class="hint" role="status"></p><div id="report-results"></div>
       </section>
     </div>
     <p id="notice" role="status" aria-live="polite"></p>

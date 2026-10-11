@@ -1,32 +1,38 @@
 // Opt-in live audit using Kazumi itself, isolated from the production TV session.
 // Saves only catalogue metadata and probe outcomes, never source URLs or cookies.
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, rename } from 'node:fs/promises';
 import path from 'node:path';
 import { startKazumiCore, kazumiCommit } from '../lib/kazumi-client.mjs';
 import { createDiscovery } from '../lib/discovery.mjs';
 import { createApp } from '../app.mjs';
-import { auditCases as cases, selectAuditTitle, selectAuditEpisode } from './audit-cases.mjs';
+import { auditCases, dailyAuditCases, selectAuditTitle, selectAuditEpisode } from './audit-cases.mjs';
 
 const args = process.argv.slice(2);
+const cases = args.includes('--daily') ? dailyAuditCases : auditCases;
 const option = (name, fallback) => args.includes(name) ? args[args.indexOf(name) + 1] : fallback;
 const directory = path.resolve(option('--rules-dir', '.tools/KazumiRules-availability'));
 const reportFile = path.resolve(option('--report', 'reports/2026-10-10-rule-availability.json'));
 const filter = option('--providers', '').split(',').filter(Boolean);
 const maxRoads = Number(option('--max-roads', '2'));
 if (!Number.isInteger(maxRoads) || maxRoads < 1 || maxRoads > 20) throw new Error('Invalid --max-roads');
-const index = JSON.parse(await readFile(path.join(directory, 'index.json'), 'utf8'));
+let index;
+try { index = JSON.parse(await readFile(path.join(directory, 'index.json'), 'utf8')); }
+catch (error) {
+  if (error.code !== 'ENOENT') throw error;
+  index = JSON.parse(await readFile(path.join(directory, 'enabled.json'), 'utf8')).map(name => ({ name }));
+}
 const rules = await Promise.all(index.filter(item => !filter.length || filter.includes(item.name)).map(async item => {
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(item.name)) throw new Error('Invalid provider name');
   return { ...JSON.parse(await readFile(path.join(directory, item.name + '.json'), 'utf8')), id: item.name };
 }));
 if (!rules.length || filter.some(id => !rules.some(rule => rule.id === id))) throw new Error('Unknown providers');
-const report = { startedAt: new Date().toISOString(), engine: 'kazumi', kazumiCommit,
+const report = { startedAt: new Date().toISOString(), status: 'running', timeZone: 'America/Los_Angeles', expectedPerProvider: cases.length, engine: 'kazumi', kazumiCommit,
   rulesDirectory: path.basename(directory), maxRoads, methodology: 'First episode; real Kazumi search/chapters/native parser, validated stream and isolated Mac gateway byte probe. Not physical-TV decoding or full-episode coverage.',
   providers: rules.map(rule => ({ id: rule.id, name: rule.name, version: rule.version, cases: [] })) };
 let saving = Promise.resolve();
 const save = () => {
   const snapshot = JSON.stringify(report, null, 2) + '\n';
-  return saving = saving.then(() => writeFile(reportFile, snapshot));
+  return saving = saving.then(async () => { await writeFile(reportFile + '.tmp', snapshot); await rename(reportFile + '.tmp', reportFile); });
 };
 const core = await startKazumiCore({ rules, port: Number(option('--core-port', '8790')) });
 const discovery = createDiscovery({ core, rules });
@@ -125,7 +131,7 @@ try {
       }
     }
   }
-  report.completedAt = new Date().toISOString();
+  report.completedAt = new Date().toISOString(); report.status = 'completed';
   await save();
 } finally {
   await close();

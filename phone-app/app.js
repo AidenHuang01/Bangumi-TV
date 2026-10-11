@@ -29,8 +29,11 @@
     $('connection').classList.toggle('online', online);
   }
   function selectTab(value) {
-    $('search-panel').hidden = value !== 'search'; $('queue-panel').hidden = value !== 'queue';
-    $('search-tab').classList.toggle('selected', value === 'search'); $('queue-tab').classList.toggle('selected', value === 'queue');
+    ['search', 'queue', 'reports'].forEach(name => {
+      $(name + '-panel').hidden = value !== name;
+      $(name + '-tab').classList.toggle('selected', value === name);
+    });
+    if (value === 'reports') loadReports();
   }
   function button(label, callback, className) {
     const element = document.createElement('button'); element.type = 'button'; element.textContent = label;
@@ -182,6 +185,50 @@
     catch (error) { notice(error.message, true); } finally { $('queue-all').disabled = false; }
   };
   $('search-tab').onclick = () => selectTab('search'); $('queue-tab').onclick = () => selectTab('queue');
+  $('reports-tab').onclick = () => selectTab('reports');
+  let reportGeneration = 0;
+  async function showReport() {
+    const id = $('report-select').value, generation = ++reportGeneration;
+    if (!id) return;
+    try {
+      const report = await api('/api/reports/' + encodeURIComponent(id));
+      if (generation !== reportGeneration) return;
+      $('report-status').textContent = new Date(report.startedAt).toLocaleString() + ' · ' + report.status +
+        (report.error ? '\n' + report.error : '') + (report.status !== 'completed' ? '\n报告尚未完成，可稍后刷新。' : '');
+      $('report-results').textContent = '';
+      for (const provider of report.providers || []) {
+        const section = document.createElement('section'); section.className = 'panel';
+        const heading = document.createElement('h3');
+        heading.textContent = provider.id + ' · ' + provider.cases.filter(item => item?.outcome === 'passed').length + '/' + (report.expectedPerProvider || 10) + ' 通过';
+        section.appendChild(heading);
+        for (const result of provider.cases.filter(Boolean)) {
+          const details = document.createElement('details'), label = document.createElement('summary'), description = document.createElement('p');
+          const pending = result.outcome === 'catalogue-only';
+          label.textContent = (result.outcome === 'passed' ? '✓ ' : pending ? '… ' : '✗ ') + result.query;
+          description.className = 'hint';
+          description.textContent = (result.error || (pending ? '目录已找到，等待视频测试' : '')) + '\n' + (result.attempts || []).map(a =>
+            '线路 ' + a.road + ' · 第 ' + a.episode + ' · ' + (a.outcome === 'passed' ? a.format + ' / ' + a.bytes + ' bytes' : a.error) + ' · ' + a.elapsedSeconds + 's').join('\n');
+          details.append(label, description); section.appendChild(details);
+        }
+        $('report-results').appendChild(section);
+      }
+    } catch (error) { if (generation === reportGeneration) $('report-status').textContent = error.message; }
+  }
+  async function loadReports() {
+    try {
+      const data = await api('/api/reports'), previous = $('report-select').value;
+      $('report-select').textContent = '';
+      for (const report of data.reports) {
+        const option = document.createElement('option'); option.value = report.id;
+        option.textContent = new Date(report.startedAt).toLocaleString() + ' · ' + report.status;
+        $('report-select').appendChild(option);
+      }
+      if (data.reports.some(item => item.id === previous)) $('report-select').value = previous;
+      if (!data.reports.length) { $('report-status').textContent = '还没有报告。首次测试完成后会显示在这里。'; return; }
+      await showReport();
+    } catch (error) { $('report-status').textContent = error.message; }
+  }
+  $('report-select').onchange = showReport; $('report-refresh').onclick = loadReports;
   const commands = { 'toggle-play': () => ({ action: state?.tv.status === 'paused' ? 'resume' : 'pause' }),
     'seek-back': () => ({ action: 'seek', seconds: -10 }), 'seek-forward': () => ({ action: 'seek', seconds: 10 }),
     stop: () => ({ action: 'stop' }), 'play-next': () => ({ action: 'next' }), 'clear-queue': () => ({ action: 'clear' }) };

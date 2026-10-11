@@ -56,3 +56,6 @@ details label { margin-top: 16px; }
 input[type=checkbox] { width: auto; min-height: auto; }
 summary { cursor: pointer; color: #a5f1d9; }
 #danmaku-matches button { margin: 6px 4px; }
+#reports-panel .panel { margin-top: 16px; }
+#report-results details { border-top: 1px solid #34463e; padding: 10px 0; }
+nav button { padding: 10px 8px; }

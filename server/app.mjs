@@ -12,6 +12,7 @@ import { createDiscovery, readBody } from './lib/discovery.mjs';
 import { createController } from './lib/controller.mjs';
 import { createDanmaku } from './lib/danmaku.mjs';
 import { createCovers } from './lib/covers.mjs';
+import { listReports, readReport } from './lib/reports.mjs';
 
 const serverDir = path.dirname(fileURLToPath(import.meta.url));
 const allowedFiles = new Set(['index.html', 'style.css', 'app.js', 'danmaku.js', 'defaults.js', 'icon.svg']);
@@ -195,6 +196,8 @@ export function createApp({
         uptimeSeconds: Math.round(process.uptime()), ...metrics
       });
       if (pathname === '/api/providers') return json(res, 200, { providers: await discovery.providers() });
+      if (pathname === '/api/reports') return json(res, 200, { reports: await listReports(), schedule: '05:00 America/Los_Angeles' });
+      if (pathname.startsWith('/api/reports/')) return json(res, 200, await readReport(pathname.slice('/api/reports/'.length)));
       if (/^\/api\/covers\/[a-f0-9]{32}$/.test(pathname)) {
         const image = await covers.get(discovery.showTitle(pathname.split('/')[3]));
         res.writeHead(200, { 'Content-Type': image.type, 'Content-Length': image.bytes.length, 'Cache-Control': 'private, max-age=300' });
