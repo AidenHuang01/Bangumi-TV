@@ -51,3 +51,7 @@ nav .selected { background: #29473d; color: #a5f1d9; border-color: #76bca4; }
 #notice.error { background: #4c3030; border-color: #a26969; }
 footer { color: #7f9795; font-size: 12px; margin-top: 28px; }
 @media (max-width: 360px) { .panel { padding: 16px; } h1 { font-size: 25px; } .episode .actions { width: 100%; } .episode .actions button { flex: 1; } }
+details label { margin-top: 16px; }
+input[type=checkbox] { width: auto; min-height: auto; }
+summary { cursor: pointer; color: #a5f1d9; }
+#danmaku-matches button { margin: 6px 4px; }

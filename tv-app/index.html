@@ -55,6 +55,7 @@
   <section id="player-screen" class="hidden">
     <object id="av-player" type="application/avplayer"></object>
     <video id="browser-player" playsinline></video>
+    <div id="danmaku-layer" class="danmaku-layer" aria-hidden="true"></div>
     <div id="subtitle" class="subtitle"></div>
     <div id="playback-message" class="playback-message hidden" role="status"></div>
     <div id="hud" class="hud">
@@ -63,8 +64,10 @@
       <div class="transport"><span id="playback-time">0:00 / 0:00</span><div><button id="seek-back">−10 sec</button><button id="toggle-play" class="primary">Pause</button><button id="seek-forward">+10 sec</button><button id="toggle-subtitles">Subtitles: on</button><button id="stop-play">Back to library</button></div></div>
       <p class="remote-hint">OK: play / pause · Left / Right: seek · Down: controls · Back: library</p>
       <p id="phone-controller-player" class="remote-hint"></p>
+      <p id="danmaku-status" class="remote-hint"></p>
     </div>
   </section>
+  <script src="danmaku.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

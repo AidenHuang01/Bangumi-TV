@@ -45,6 +45,7 @@ export function createController({ discovery, now = Date.now } = {}) {
         const { item } = await discovery.resolveSelection(entry.selection);
         if (job !== generation || closed) return;
         if (!online()) throw error('The TV disconnected while resolving. Open the app and retry.', 409);
+        active.item = item;
         commands = commands.filter(command => command.action !== 'play');
         issue('play', { item, playbackId }); phase = 'loading'; revision++;
       } catch (failure) {
@@ -89,6 +90,7 @@ export function createController({ discovery, now = Date.now } = {}) {
         actual: Math.max(0, Number(seek.actual) || 0), error: String(seek.error || '').slice(0, 300)
       } : null;
       receiver.playbackId = input.playbackId;
+      receiver.mediaId = typeof input.mediaId === 'string' && /^anime-[a-f0-9]{32}$/.test(input.mediaId) ? input.mediaId : null;
       if (active && input.playbackId === active.playbackId && phase !== 'resolving') {
         phase = receiver.status;
         if (phase === 'error') lastError = String(input.error || 'TV playback failed. Try another source.').slice(0, 300);
@@ -101,9 +103,16 @@ export function createController({ discovery, now = Date.now } = {}) {
     },
     state() {
       return { ...this.info(), revision, phase, error: lastError, active: publicEntry(active),
+        media: this.media(),
         tv: { status: receiver?.status || 'idle', title: receiver?.title || '',
           position: receiver?.position || 0, duration: receiver?.duration || 0, seek: receiver?.seek || null },
         queue: queue.map(publicEntry) };
+    },
+    media() {
+      if (active?.item) return active.item;
+      const stream = receiver?.mediaId && discovery.stream(receiver.mediaId);
+      return stream ? { id: stream.id, title: stream.title, format: stream.format,
+        streamPath: '/stream/' + stream.id + (stream.format === 'hls' ? '/index.m3u8' : ''), danmakuPath: '/api/danmaku/' + stream.id } : null;
     },
     mutate(input) {
       if (input.action === 'enqueue' || input.action === 'play') {

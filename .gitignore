@@ -4,5 +4,8 @@ node_modules/
 server/media/*
 !server/media/.gitkeep
 server/sources.json
+server/settings.local.json
+.env
+server/data/
 *.log
 .DS_Store

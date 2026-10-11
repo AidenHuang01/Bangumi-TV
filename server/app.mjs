@@ -10,9 +10,10 @@ import { createReferences, rewriteManifest } from './lib/hls.mjs';
 import { requestUpstream, validateRemoteURL, isPrivateAddress } from './lib/upstream.mjs';
 import { createDiscovery, readBody } from './lib/discovery.mjs';
 import { createController } from './lib/controller.mjs';
+import { createDanmaku } from './lib/danmaku.mjs';
 
 const serverDir = path.dirname(fileURLToPath(import.meta.url));
-const allowedFiles = new Set(['index.html', 'style.css', 'app.js', 'defaults.js', 'icon.svg']);
+const allowedFiles = new Set(['index.html', 'style.css', 'app.js', 'danmaku.js', 'defaults.js', 'icon.svg']);
 const videoExtensions = new Set(['.mp4', '.m4v', '.mov', '.webm', '.mkv']);
 
 async function inside(root, filename) {
@@ -29,19 +30,20 @@ export function createApp({
   controllerDir = path.join(serverDir, '..', 'phone-app'),
   receiverAddress = process.env.TV_IP,
   upstream = requestUpstream,
-  discovery = createDiscovery({ upstream })
+  discovery = createDiscovery({ upstream }),
+  danmaku = createDanmaku()
 } = {}) {
   const references = createReferences(randomBytes(32));
   const metrics = { activeTransfers: 0, requests: 0, bytesSent: 0 };
   const controller = createController({ discovery });
 
-  async function body(req) {
+  async function body(req, limit = 32768) {
     if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) throw Object.assign(new Error('Use application/json'), { status: 415 });
     req.setTimeout(5000, () => req.destroy());
     const chunks = []; let size = 0;
     for await (const chunk of req) {
       size += chunk.length;
-      if (size > 32768) throw Object.assign(new Error('Request is too large'), { status: 413 });
+      if (size > limit) throw Object.assign(new Error('Request is too large'), { status: 413 });
       chunks.push(chunk);
     }
     let value;
@@ -155,6 +157,18 @@ export function createApp({
         if (origin && !pinnedTV && !(tv && origin === 'null') && origin !== 'http://' + req.headers.host && origin !== 'https://' + req.headers.host) {
           return json(res, 403, { error: 'Controller requests must come from this Mac server.' });
         }
+        if (pathname === '/api/controller/danmaku' && req.method === 'GET') return json(res, 200, danmaku.status());
+        if (pathname === '/api/controller/danmaku/search' && req.method === 'GET') {
+          return json(res, 200, await danmaku.search(url.searchParams.get('anime'), url.searchParams.get('episode')));
+        }
+        if (pathname === '/api/controller/danmaku' && req.method === 'POST') {
+          const input = await body(req, 5 * 1024 * 1024);
+          if (input.action === 'settings') return json(res, 200, danmaku.settings(input));
+          if (!discovery.stream(input.streamId || '')) return json(res, 404, { error: 'Choose a playing video first.' });
+          if (input.action === 'import') return json(res, 200, danmaku.import(input.streamId, input.content));
+          if (input.action === 'attach') return json(res, 200, await danmaku.attach(input.streamId, input.episodeId));
+          return json(res, 400, { error: 'Unknown danmaku action' });
+        }
         if (pathname === '/api/controller/info' && req.method === 'GET') return json(res, 200, controller.info());
         if (tv && req.method === 'POST') {
           const input = await body(req);
@@ -167,6 +181,12 @@ export function createApp({
         return json(res, 405, { error: 'Unsupported controller method' });
       }
       if (!['GET', 'HEAD'].includes(req.method)) return json(res, 405, { error: 'GET and HEAD only outside controller endpoints' });
+      if (/^\/api\/danmaku\/anime-[a-f0-9]{32}$/.test(pathname)) {
+        const id = pathname.split('/')[3];
+        if (!discovery.stream(id)) return json(res, 404, { error: 'Video expired. Select an episode again.' });
+        return json(res, 200, danmaku.read(id, url.searchParams.get('version')));
+      }
+      if (pathname === '/shared/danmaku.js') return serveFile(req, res, await inside(tvDir, 'danmaku.js'), mimeTypes['.js']);
       if (pathname === '/api/health') return json(res, 200, {
         name: 'Bangumi TV POC', version: '0.4.0', playback: 'original', kazumiSearch: true, phoneController: true,
         animeBackend: discovery.engineInfo ? await discovery.engineInfo() : { engine: 'custom' },

@@ -4,6 +4,20 @@
   var $ = function (id) { return document.getElementById(id); };
   var nativePlayer = window.webapis && window.webapis.avplay;
   var video = $('browser-player');
+  var danmaku = window.BangumiDanmaku ? new window.BangumiDanmaku($('danmaku-layer')) : null;
+  var danmakuTimer, danmakuVersion = '', danmakuBusy = false;
+  function loadDanmaku() {
+    if (!danmaku || !current || !current.danmakuPath || danmakuBusy) return;
+    var generation = playGeneration;
+    danmakuBusy = true;
+    request(server, current.danmakuPath + '?version=' + encodeURIComponent(danmakuVersion), function (error, data) {
+      danmakuBusy = false;
+      if (error || generation !== playGeneration) return;
+      if (!data.unchanged) danmaku.setData(data.comments);
+      danmaku.configure(data); danmakuVersion = data.version;
+      $('danmaku-status').textContent = data.count ? 'Danmaku: ' + data.count : 'Danmaku: import from phone or configure API keys';
+    });
+  }
   var server = '';
   var current = null;
   var preparing = false;
@@ -73,7 +87,7 @@
     var terminal = remoteTerminal;
     tvPost('/api/tv/poll', { applied: receiverApplied, playbackId: remotePlaybackId,
       status: !current ? 'idle' : remoteError ? 'error' : preparing ? 'loading' : paused() ? 'paused' : 'playing',
-      title: current ? current.title : '', position: position(), duration: duration(), error: remoteError, seek: remoteSeek, terminal: terminal }, function (error, result) {
+      title: current ? current.title : '', mediaId: current ? current.id : '', position: position(), duration: duration(), error: remoteError, seek: remoteSeek, terminal: terminal }, function (error, result) {
       receiverBusy = false;
       if (base !== server) return;
       if (error) {
@@ -322,6 +336,7 @@
   }
   function updateTime() {
     var now = position(), length = duration();
+    if (danmaku) danmaku.tick(now, paused());
     $('playback-time').textContent = timeLabel(now) + ' / ' + timeLabel(length);
     $('progress-fill').style.width = isFinite(length) && length > 0 ? Math.min(100, now / length * 100) + '%' : '0%';
     $('toggle-play').textContent = paused() ? 'Play' : 'Pause';
@@ -358,6 +373,8 @@
     playGeneration++;
     current = null; preparing = false; cues = []; seeking = false;
     seekTicket++; clearTimeout(seekTimer); remoteSeek = null;
+    clearInterval(danmakuTimer); danmakuVersion = ''; danmakuBusy = false;
+    if (danmaku) danmaku.clear();
     clearInterval(subtitleTimer); clearTimeout(nativeSubtitleTimer); clearTimeout(hideTimer);
     screenSaver(true);
     if (nativePlayer) { try { nativePlayer.close(); } catch (e) {} }
@@ -416,6 +433,7 @@
       if (promise && promise.catch) promise.catch(function (error) { if (generation === playGeneration) failPlayback(error.message); });
     }
     subtitleTimer = setInterval(updateTime, 250);
+    loadDanmaku(); danmakuTimer = setInterval(loadDanmaku, 5000);
   }
   function togglePlay(force) {
     if (!current || preparing) return;

@@ -88,6 +88,41 @@
   async function action(value) {
     renderState(await api('/api/controller/action', { method: 'POST', body: JSON.stringify(value) }, 12000));
   }
+  function playingMedia() { return state?.media; }
+  async function danmakuAction(input) {
+    return api('/api/controller/danmaku', { method: 'POST', body: JSON.stringify(input) }, 25000);
+  }
+  $('danmaku-save').onclick = async () => {
+    try { await danmakuAction({ action: 'settings', enabled: $('danmaku-enabled').checked, offset: Number($('danmaku-offset').value) }); notice('Danmaku settings applied.'); }
+    catch (error) { notice(error.message, true); }
+  };
+  $('danmaku-file').onchange = async () => {
+    const file = $('danmaku-file').files[0], media = playingMedia();
+    if (!file) return;
+    try {
+      if (!media?.id) throw new Error('Start an episode first.');
+      if (file.size > 4 * 1024 * 1024) throw new Error('Danmaku file limit: 4 MB');
+      const result = await danmakuAction({ action: 'import', streamId: media.id, content: await file.text() });
+      notice(result.count + ' comments imported for ' + media.title);
+    } catch (error) { notice(error.message, true); }
+    finally { $('danmaku-file').value = ''; }
+  };
+  $('danmaku-search').onclick = async () => {
+    $('danmaku-search').disabled = true;
+    try {
+      const data = await api('/api/controller/danmaku/search?anime=' + encodeURIComponent($('danmaku-query').value), {}, 25000);
+      $('danmaku-matches').textContent = '';
+      for (const anime of data.animes || []) for (const episode of anime.episodes || []) {
+        $('danmaku-matches').appendChild(button(anime.animeTitle + ' · ' + episode.episodeTitle, async () => {
+          const media = playingMedia(); if (!media?.id) throw new Error('Start an episode first.');
+          const result = await danmakuAction({ action: 'attach', streamId: media.id, episodeId: episode.episodeId });
+          notice(result.count + ' online comments loaded.');
+        }));
+      }
+      if (!$('danmaku-matches').children.length) $('danmaku-matches').textContent = 'No episodes found. Try a more specific title.';
+    } catch (error) { notice(error.message, true); }
+    finally { $('danmaku-search').disabled = false; }
+  };
   function renderEpisodes() {
     if (!show) return;
     const road = show.roads[Number($('road').value) || 0]; $('episodes').textContent = '';
@@ -151,6 +186,13 @@
     try { await action(value()); } catch (error) { notice(error.message, true); } finally { await updateState(); } }; });
   async function init() {
     await updateState();
+    try {
+      const settings = await api('/api/controller/danmaku');
+      $('danmaku-status').textContent = settings.message;
+      $('danmaku-enabled').checked = settings.enabled !== false;
+      $('danmaku-offset').value = settings.offset || 0;
+      $('danmaku-search').disabled = !settings.configured;
+    } catch (error) { $('danmaku-status').textContent = error.message; }
     try {
       const result = await api('/api/providers');
       result.providers.forEach(provider => { const option = document.createElement('option'); option.value = provider.id; option.textContent = provider.name; $('provider').appendChild(option); });

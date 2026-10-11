@@ -17,6 +17,19 @@
         <div class="progress"><div id="progress-fill"></div></div><p id="playback-time" class="time">0:00 / 0:00</p>
         <div class="transport"><button id="seek-back" aria-label="Seek back 10 seconds">−10s</button><button id="toggle-play" class="primary">Pause</button><button id="seek-forward" aria-label="Seek forward 10 seconds">+10s</button><button id="stop">Stop</button></div>
       </section>
+      <details class="panel" id="danmaku-panel">
+        <summary>Danmaku / 弹幕</summary>
+        <p id="danmaku-status" class="hint">Loading danmaku settings…</p>
+        <label><input id="danmaku-enabled" type="checkbox" checked> Show danmaku</label>
+        <label for="danmaku-offset">Offset in seconds (positive = later)</label>
+        <input id="danmaku-offset" type="number" min="-600" max="600" step="0.5" value="0">
+        <button id="danmaku-save">Apply settings</button>
+        <label for="danmaku-file">Import Bilibili XML / JSON for the playing episode (up to 4 MB)</label>
+        <input id="danmaku-file" type="file" accept=".xml,.json">
+        <label for="danmaku-query">Find online danmaku</label>
+        <div class="input-row"><input id="danmaku-query" placeholder="Anime title"><button id="danmaku-search">Search</button></div>
+        <div id="danmaku-matches"></div>
+      </details>
       <nav aria-label="Controller views"><button id="search-tab" class="selected">Find anime</button><button id="queue-tab">Queue <span id="queue-count">0</span></button></nav>
       <section id="search-panel">
         <form id="search-form" class="panel"><label for="query">Anime title</label><div class="input-row"><input id="query" type="search" maxlength="100" autocomplete="off" value="葬送的芙莉莲" placeholder="Search anime…" required><button id="search-button" class="primary">Search</button></div><label for="provider">Search source</label><select id="provider"><option value="all">All sources</option></select></form>

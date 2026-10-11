@@ -206,6 +206,24 @@ is unusable. Use `--core-port` / `--port` if these ports are occupied.
 
 ## Add an actual video
 
+### Danmaku framework
+
+TV playback has a clock-driven overlay supporting scrolling, top and bottom
+comments. Pause and seek use the video clock. Open **Danmaku / 弹幕** on the phone
+to toggle it, set a ±600-second offset, or import Bilibili XML / Dandan JSON
+for the current episode. Imports stay in Mac memory and clear on restart.
+Text is rendered as text, never executable HTML; imports are limited to 4 MB.
+
+Online integration uses the same DanDanPlay service as Kazumi. When your own
+credentials are ready, copy the structure of `server/settings.example.json` into
+`server/settings.local.json`, fill `dandan.appId` and `dandan.appSecret`, then
+restart the server. This local file is ignored by Git. Alternatively set
+`DANDAN_APP_ID` and `DANDAN_APP_SECRET` in the server environment. Keys are never
+sent to the phone or TV. The phone's online search lets you explicitly select
+the matching show/episode before loading comments. Without keys, local imports
+and rendering work; online search remains disabled. Real authenticated API
+verification awaits those credentials. See https://doc.dandanplay.com/open/.
+
 Place a video in `server/media/` and select **Refresh** in the app. Files are
 served directly with byte-range support for seeking. Place a `.vtt` file with the
 same basename alongside it for subtitles: `Episode.mp4` and `Episode.vtt`.

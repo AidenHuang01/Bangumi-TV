@@ -127,6 +127,7 @@ export function createDiscovery({ upstream = requestUpstream, rules, resolver: c
     const streamId = 'anime-' + remember({ ...media, kind: 'remote', title: episode.title }, streams);
     return { item: { id: streamId, title: episode.title, kind: 'remote', format: media.format,
       description: (core ? 'Kazumi core' : 'Legacy Kazumi-rule adapter') + ' · original stream via Mac',
+      danmakuPath: '/api/danmaku/' + streamId,
       streamPath: '/stream/' + streamId + (media.format === 'hls' ? '/index.m3u8' : ''), subtitlePath: null } };
   }
   return {

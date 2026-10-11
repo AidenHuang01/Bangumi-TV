@@ -15,7 +15,7 @@ function argument(name) {
 }
 const server = argument('--server');
 const profile = argument('--profile');
-const assets = ['config.xml', 'index.html', 'style.css', 'app.js', 'defaults.js', 'icon.svg', 'icon.png'];
+const assets = ['config.xml', 'index.html', 'style.css', 'app.js', 'danmaku.js', 'defaults.js', 'icon.svg', 'icon.png'];
 await mkdir(output, { recursive: true });
 for (const file of assets) await cp(path.join(root, 'tv-app', file), path.join(output, file));
 if (server) {
