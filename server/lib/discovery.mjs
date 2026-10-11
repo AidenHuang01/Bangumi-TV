@@ -134,6 +134,7 @@ export function createDiscovery({ upstream = requestUpstream, rules, resolver: c
     async engineInfo() { return core ? core.health() : { engine: 'legacy', parser: 'Independent Node/Chromium adapter' }; },
     // Private server-only snapshot: a queued episode need not depend on a search ID's six-hour TTL.
     selection(id) { return { ...lookup(id, 'episode') }; },
+    showTitle(id) { return lookup(id, 'show').title; },
     resolveSelection,
     async providers() { return (await loaded).map(({ id, name }) => ({ id, name })); },
     async search(query, provider = 'all') {

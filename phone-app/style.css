@@ -34,7 +34,8 @@ nav { margin-bottom: 20px; border-bottom: 1px solid #34463e; padding-bottom: 14p
 nav button { flex: 1; border-color: transparent; }
 nav .selected { background: #29473d; color: #a5f1d9; border-color: #76bca4; }
 #queue-count { padding: 1px 6px; border-radius: 6px; background: #101b23; font-size: 13px; }
-.result { display: block; text-align: left; width: 100%; margin-bottom: 12px; padding: 18px; }
+.result { display: flex; align-items: center; gap: 16px; text-align: left; width: 100%; margin-bottom: 12px; padding: 14px; }
+.cover { width: 70px; height: 98px; object-fit: cover; border-radius: 8px; flex-shrink: 0; background: #22362f; }
 .result strong { display: block; font-size: 18px; }
 .result span { font-size: 13px; color: #a3b6bf; }
 .episode-heading { margin: 20px 0 12px; font-size: 14px; color: #b3c7be; }

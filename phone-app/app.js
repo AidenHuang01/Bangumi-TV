@@ -162,7 +162,10 @@
         const card = button('', async () => { try { await openShow(item); } catch (error) { $('show-status').textContent = error.message; } }, 'result');
         const title = document.createElement('strong'); title.textContent = item.title;
         const provider = document.createElement('span'); provider.textContent = item.provider;
-        card.append(title, provider); $('results').appendChild(card);
+        const cover = document.createElement('img'); cover.className = 'cover'; cover.alt = ''; cover.loading = 'lazy';
+        cover.src = '/api/covers/' + item.id; cover.onerror = () => { cover.hidden = true; };
+        const info = document.createElement('div'); info.append(title, provider);
+        card.append(cover, info); $('results').appendChild(card);
       });
     } catch (error) { if (generation === searchGeneration) $('search-status').textContent = error.message; }
     finally { if (generation === searchGeneration) $('search-button').disabled = false; }

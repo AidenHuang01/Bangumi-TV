@@ -197,6 +197,10 @@
       $('search-status').textContent = (items.length ? 'Choose a result, then an episode.\n' : 'No results. Try another title or provider.\n') + summaries.join(' · ');
       items.forEach(function (item) {
         var card = document.createElement('button'); card.className = 'video-card search-card';
+        var cover = document.createElement('img'); cover.className = 'search-cover'; cover.alt = '';
+        cover.src = server + '/api/covers/' + item.id;
+        cover.onerror = function () { cover.style.display = 'none'; };
+        card.appendChild(cover);
         var info = document.createElement('div'); info.className = 'card-info';
         var title = document.createElement('h3'); title.textContent = item.title;
         var source = document.createElement('p'); source.textContent = item.provider;

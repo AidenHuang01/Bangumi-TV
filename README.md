@@ -177,6 +177,11 @@ and expire after six hours; restarting the Mac server requires searching again.
 
 ### Curated sources
 
+Phone and TV search cards fetch posters asynchronously from Bangumi metadata,
+through a bounded Mac cache. Exact title matching avoids assigning a sequel's
+poster to season 1. Missing or failed images use a local placeholder and do not
+block searching or playback. Metadata API: https://bangumi.github.io/api/.
+
 `server/rules/enabled.json` now controls the provider list and recommendation
 order: AGE, 7sefun, ezdmw, DM84. The 2026-10-10 original-Kazumi audit passed
 4/4, 3/4, 2/4 and 1/4 of the four requested first-episode checks respectively.

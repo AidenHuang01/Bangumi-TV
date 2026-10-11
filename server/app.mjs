@@ -11,6 +11,7 @@ import { requestUpstream, validateRemoteURL, isPrivateAddress } from './lib/upst
 import { createDiscovery, readBody } from './lib/discovery.mjs';
 import { createController } from './lib/controller.mjs';
 import { createDanmaku } from './lib/danmaku.mjs';
+import { createCovers } from './lib/covers.mjs';
 
 const serverDir = path.dirname(fileURLToPath(import.meta.url));
 const allowedFiles = new Set(['index.html', 'style.css', 'app.js', 'danmaku.js', 'defaults.js', 'icon.svg']);
@@ -36,6 +37,7 @@ export function createApp({
   const references = createReferences(randomBytes(32));
   const metrics = { activeTransfers: 0, requests: 0, bytesSent: 0 };
   const controller = createController({ discovery });
+  const covers = createCovers();
 
   async function body(req, limit = 32768) {
     if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) throw Object.assign(new Error('Use application/json'), { status: 415 });
@@ -193,6 +195,11 @@ export function createApp({
         uptimeSeconds: Math.round(process.uptime()), ...metrics
       });
       if (pathname === '/api/providers') return json(res, 200, { providers: await discovery.providers() });
+      if (/^\/api\/covers\/[a-f0-9]{32}$/.test(pathname)) {
+        const image = await covers.get(discovery.showTitle(pathname.split('/')[3]));
+        res.writeHead(200, { 'Content-Type': image.type, 'Content-Length': image.bytes.length, 'Cache-Control': 'private, max-age=300' });
+        return res.end(req.method === 'HEAD' ? undefined : image.bytes);
+      }
       if (pathname === '/api/search') return json(res, 200, await discovery.search(url.searchParams.get('q'), url.searchParams.get('provider') || 'all'));
       if (/^\/api\/shows\/[a-f0-9]{32}$/.test(pathname)) return json(res, 200, await discovery.show(pathname.split('/')[3]));
       if (/^\/api\/resolve\/[a-f0-9]{32}$/.test(pathname)) {
