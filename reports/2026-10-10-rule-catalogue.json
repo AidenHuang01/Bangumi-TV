@@ -1,0 +1,807 @@
+{
+  "startedAt": "2026-10-10T07:07:15.069Z",
+  "engine": "kazumi",
+  "kazumiCommit": "4e821e48282d0e8e3753fd6266bb1d15e4dc0f02",
+  "rulesDirectory": "KazumiRules-availability",
+  "maxRoads": 2,
+  "methodology": "First episode; real Kazumi search/chapters/native parser, validated stream and isolated Mac gateway byte probe. Not physical-TV decoding or full-episode coverage.",
+  "providers": [
+    {
+      "id": "7sefun",
+      "name": "7sefun",
+      "version": "1.3",
+      "cases": [
+        {
+          "query": "葬送的芙莉莲",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "葬送的芙莉莲第二季",
+            "葬送的芙莉莲"
+          ],
+          "title": "葬送的芙莉莲",
+          "episodeCounts": [
+            28,
+            28
+          ]
+        },
+        {
+          "query": "命运石之门",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "命运石之门：聪明睿智的认知计算",
+            "命运石之门",
+            "命运石之门剧场版：负荷领域的既视感",
+            "命运石之门0",
+            "命运石之门23β：境界面上的缺失之环",
+            "命运石之门：横行跋扈的浪荡之徒",
+            "命运石之门0：结晶多形的情人节"
+          ],
+          "title": "命运石之门",
+          "episodeCounts": [
+            25,
+            25
+          ]
+        },
+        {
+          "query": "死亡笔记",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "死亡笔记",
+            "死亡笔记特别篇2：L的继承者",
+            "死亡笔记特别篇：神之幻觉"
+          ],
+          "title": "死亡笔记",
+          "episodeCounts": [
+            37,
+            39
+          ]
+        },
+        {
+          "query": "Ave Mujica",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "BanG Dream! Ave Mujica",
+            "BanG Dream! Ave Mujica",
+            "BanG Dream! 颂乐人偶"
+          ],
+          "title": "BanG Dream! Ave Mujica",
+          "episodeCounts": [
+            13
+          ]
+        }
+      ]
+    },
+    {
+      "id": "aafun",
+      "name": "aafun",
+      "version": "1.2",
+      "cases": [
+        {
+          "query": "葬送的芙莉莲",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "葬送的芙莉莲 第二季",
+            "葬送的芙莉莲"
+          ],
+          "title": "葬送的芙莉莲",
+          "episodeCounts": [
+            28
+          ]
+        },
+        {
+          "query": "命运石之门",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "命运石之门 聪明睿智的认知计算",
+            "命运石之门 负荷领域的既视感",
+            "命运石之门",
+            "命运石之门 0"
+          ],
+          "title": "命运石之门",
+          "episodeCounts": [
+            25
+          ]
+        },
+        {
+          "query": "死亡笔记",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "死亡笔记"
+          ],
+          "title": "死亡笔记",
+          "episodeCounts": [
+            37
+          ]
+        },
+        {
+          "query": "Ave Mujica",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "BanG Dream! Ave Mujica"
+          ],
+          "title": "BanG Dream! Ave Mujica",
+          "episodeCounts": [
+            13
+          ]
+        }
+      ]
+    },
+    {
+      "id": "AGE",
+      "name": "AGE",
+      "version": "1.5",
+      "cases": [
+        {
+          "query": "葬送的芙莉莲",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "葬送的芙莉莲 第二季",
+            "葬送的芙莉莲"
+          ],
+          "title": "葬送的芙莉莲",
+          "episodeCounts": [
+            28,
+            28,
+            28,
+            28,
+            28,
+            28
+          ]
+        },
+        {
+          "query": "命运石之门",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "命运石之门0",
+            "命运石之门",
+            "命运石之门 聪明睿智的认知计算",
+            "命运石之门 负荷领域的既视感"
+          ],
+          "title": "命运石之门",
+          "episodeCounts": [
+            26,
+            26,
+            25,
+            25
+          ]
+        },
+        {
+          "query": "死亡笔记",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "DEATH NOTE",
+            "死亡笔记特别篇 L的继承者",
+            "DEATH NOTE 幻影之神"
+          ],
+          "title": "DEATH NOTE",
+          "episodeCounts": [
+            37,
+            37,
+            37,
+            37
+          ]
+        },
+        {
+          "query": "Ave Mujica",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "颂乐人偶 剧场版",
+            "BanG Dream! Ave Mujica"
+          ],
+          "title": "BanG Dream! Ave Mujica",
+          "episodeCounts": [
+            13,
+            13,
+            13,
+            13,
+            13,
+            13,
+            6
+          ]
+        }
+      ]
+    },
+    {
+      "id": "akianime",
+      "name": "akianime",
+      "version": "1.4",
+      "cases": [
+        {
+          "query": "葬送的芙莉莲",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        },
+        {
+          "query": "命运石之门",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        },
+        {
+          "query": "死亡笔记",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        },
+        {
+          "query": "Ave Mujica",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        }
+      ]
+    },
+    {
+      "id": "baimao",
+      "name": "baimao",
+      "version": "1.0",
+      "cases": [
+        {
+          "query": "葬送的芙莉莲",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        },
+        {
+          "query": "命运石之门",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        },
+        {
+          "query": "死亡笔记",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        },
+        {
+          "query": "Ave Mujica",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        }
+      ]
+    },
+    {
+      "id": "dalvdm",
+      "name": "dalvdm",
+      "version": "1.1",
+      "cases": [
+        {
+          "query": "葬送的芙莉莲",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        },
+        {
+          "query": "命运石之门",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        },
+        {
+          "query": "死亡笔记",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        },
+        {
+          "query": "Ave Mujica",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        }
+      ]
+    },
+    {
+      "id": "DM84",
+      "name": "DM84",
+      "version": "1.4",
+      "cases": [
+        {
+          "query": "葬送的芙莉莲",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "葬送的芙莉莲 第二季",
+            "葬送的芙莉莲"
+          ],
+          "title": "葬送的芙莉莲",
+          "episodeCounts": [
+            28,
+            28
+          ]
+        },
+        {
+          "query": "命运石之门",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "命运石之门：聪明睿智的认知计算",
+            "命运石之门0",
+            "命运石之门",
+            "命运石之门剧场版：负荷领域的既视感"
+          ],
+          "title": "命运石之门",
+          "episodeCounts": [
+            25,
+            26
+          ]
+        },
+        {
+          "query": "死亡笔记",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "死亡笔记"
+          ],
+          "title": "死亡笔记",
+          "episodeCounts": [
+            37
+          ]
+        },
+        {
+          "query": "Ave Mujica",
+          "stage": "chapters",
+          "outcome": "failed",
+          "attempts": [],
+          "searchTitles": [
+            "BanG Dream! Ave Mujica"
+          ],
+          "title": "BanG Dream! Ave Mujica",
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        }
+      ]
+    },
+    {
+      "id": "ezdmw",
+      "name": "ezdmw",
+      "version": "1.2",
+      "cases": [
+        {
+          "query": "葬送的芙莉莲",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "葬送的芙莉莲"
+          ],
+          "title": "葬送的芙莉莲",
+          "episodeCounts": [
+            38,
+            38,
+            38
+          ]
+        },
+        {
+          "query": "命运石之门",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "命运石之门0 OVA",
+            "命运石之门0",
+            "命运石之门：负荷领域的既视感",
+            "命运石之门"
+          ],
+          "title": "命运石之门",
+          "episodeCounts": [
+            25,
+            25,
+            25,
+            25
+          ]
+        },
+        {
+          "query": "死亡笔记",
+          "stage": "chapters",
+          "outcome": "failed",
+          "attempts": [],
+          "searchTitles": [
+            "死亡笔记"
+          ],
+          "title": "死亡笔记",
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        },
+        {
+          "query": "Ave Mujica",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "BanG Dream! Ave Mujica"
+          ],
+          "title": "BanG Dream! Ave Mujica",
+          "episodeCounts": [
+            13,
+            13,
+            13
+          ]
+        }
+      ]
+    },
+    {
+      "id": "giriGiriLove",
+      "name": "giriGiriLove",
+      "version": "2.4",
+      "cases": [
+        {
+          "query": "葬送的芙莉莲",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Source requires manual verification. Choose another provider."
+        },
+        {
+          "query": "命运石之门",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Source requires manual verification. Choose another provider."
+        },
+        {
+          "query": "死亡笔记",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Source requires manual verification. Choose another provider."
+        },
+        {
+          "query": "Ave Mujica",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Source requires manual verification. Choose another provider."
+        }
+      ]
+    },
+    {
+      "id": "mgnacg",
+      "name": "mgnacg",
+      "version": "1.0",
+      "cases": [
+        {
+          "query": "葬送的芙莉莲",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Source requires manual verification. Choose another provider."
+        },
+        {
+          "query": "命运石之门",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Source requires manual verification. Choose another provider."
+        },
+        {
+          "query": "死亡笔记",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Source requires manual verification. Choose another provider."
+        },
+        {
+          "query": "Ave Mujica",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Source requires manual verification. Choose another provider."
+        }
+      ]
+    },
+    {
+      "id": "moonci",
+      "name": "moonci",
+      "version": "1.0",
+      "cases": [
+        {
+          "query": "葬送的芙莉莲",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "葬送的芙莉莲 第二季",
+            "葬送的芙莉莲"
+          ],
+          "title": "葬送的芙莉莲",
+          "episodeCounts": [
+            28,
+            28
+          ]
+        },
+        {
+          "query": "命运石之门",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "命运石之门 聪明睿智的认知计算",
+            "命运石之门 负荷领域的既视感",
+            "命运石之门",
+            "命运石之门 0"
+          ],
+          "title": "命运石之门",
+          "episodeCounts": [
+            25
+          ]
+        },
+        {
+          "query": "死亡笔记",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "死亡笔记"
+          ],
+          "title": "死亡笔记",
+          "episodeCounts": [
+            37
+          ]
+        },
+        {
+          "query": "Ave Mujica",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "BanG Dream! Ave Mujica"
+          ],
+          "title": "BanG Dream! Ave Mujica",
+          "episodeCounts": [
+            13,
+            13,
+            13
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mutefun",
+      "name": "mutefun",
+      "version": "1.2",
+      "cases": [
+        {
+          "query": "葬送的芙莉莲",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Source requires manual verification. Choose another provider."
+        },
+        {
+          "query": "命运石之门",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Source requires manual verification. Choose another provider."
+        },
+        {
+          "query": "死亡笔记",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Source requires manual verification. Choose another provider."
+        },
+        {
+          "query": "Ave Mujica",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Source requires manual verification. Choose another provider."
+        }
+      ]
+    },
+    {
+      "id": "MXdm",
+      "name": "MXdm",
+      "version": "2.4",
+      "cases": [
+        {
+          "query": "葬送的芙莉莲",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        },
+        {
+          "query": "命运石之门",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        },
+        {
+          "query": "死亡笔记",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        },
+        {
+          "query": "Ave Mujica",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        }
+      ]
+    },
+    {
+      "id": "sorani",
+      "name": "sorani",
+      "version": "1.0",
+      "cases": [
+        {
+          "query": "葬送的芙莉莲",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        },
+        {
+          "query": "命运石之门",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        },
+        {
+          "query": "死亡笔记",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        },
+        {
+          "query": "Ave Mujica",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        }
+      ]
+    },
+    {
+      "id": "xfdmneo",
+      "name": "xfdmneo",
+      "version": "1.1",
+      "cases": [
+        {
+          "query": "葬送的芙莉莲",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "葬送的芙莉莲",
+            "葬送的芙莉莲 第二季"
+          ],
+          "title": "葬送的芙莉莲",
+          "episodeCounts": [
+            28,
+            28
+          ]
+        },
+        {
+          "query": "命运石之门",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "命运石之门",
+            "命运石之门 聪明睿智的认知计算",
+            "命运石之门 负荷领域的既视感",
+            "命运石之门 0"
+          ],
+          "title": "命运石之门",
+          "episodeCounts": [
+            26
+          ]
+        },
+        {
+          "query": "死亡笔记",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "死亡笔记"
+          ],
+          "title": "死亡笔记",
+          "episodeCounts": [
+            37
+          ]
+        },
+        {
+          "query": "Ave Mujica",
+          "stage": "catalogue",
+          "outcome": "catalogue-only",
+          "attempts": [],
+          "searchTitles": [
+            "BanG Dream! Ave Mujica"
+          ],
+          "title": "BanG Dream! Ave Mujica",
+          "episodeCounts": [
+            13,
+            13,
+            13
+          ]
+        }
+      ]
+    },
+    {
+      "id": "xfdmnext",
+      "name": "xfdmnext",
+      "version": "1.1",
+      "cases": [
+        {
+          "query": "葬送的芙莉莲",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        },
+        {
+          "query": "命运石之门",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        },
+        {
+          "query": "死亡笔记",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        },
+        {
+          "query": "Ave Mujica",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        }
+      ]
+    }
+  ],
+  "completedAt": "2026-10-10T07:07:34.294Z"
+}

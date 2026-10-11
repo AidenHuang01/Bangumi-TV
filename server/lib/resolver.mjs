@@ -255,6 +255,8 @@ export function createResolver({ upstream = requestUpstream, chromePath = proces
     }
   }
   return {
+    // Stream validation only; this does not invoke either legacy extractor.
+    probe,
     async resolve(episode) {
       if (busy) throw Object.assign(new Error('A video is already being resolved. Try again shortly.'), { status: 429 });
       busy = true;

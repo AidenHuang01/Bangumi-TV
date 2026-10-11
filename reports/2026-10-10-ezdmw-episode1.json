@@ -1,0 +1,133 @@
+{
+  "startedAt": "2026-10-10T07:11:40.356Z",
+  "engine": "kazumi",
+  "kazumiCommit": "4e821e48282d0e8e3753fd6266bb1d15e4dc0f02",
+  "rulesDirectory": "KazumiRules-availability",
+  "maxRoads": 4,
+  "methodology": "First episode; real Kazumi search/chapters/native parser, validated stream and isolated Mac gateway byte probe. Not physical-TV decoding or full-episode coverage.",
+  "providers": [
+    {
+      "id": "ezdmw",
+      "name": "ezdmw",
+      "version": "1.2",
+      "cases": [
+        {
+          "query": "葬送的芙莉莲",
+          "stage": "gateway",
+          "outcome": "passed",
+          "attempts": [
+            {
+              "road": 1,
+              "episode": "1",
+              "stage": "gateway",
+              "format": "mp4",
+              "status": 206,
+              "bytes": 1024,
+              "outcome": "passed",
+              "elapsedSeconds": 5
+            }
+          ],
+          "searchTitles": [
+            "葬送的芙莉莲"
+          ],
+          "title": "葬送的芙莉莲",
+          "episodeCounts": [
+            38,
+            38,
+            38
+          ]
+        },
+        {
+          "query": "命运石之门",
+          "stage": "resolve",
+          "outcome": "failed",
+          "attempts": [
+            {
+              "road": 1,
+              "episode": "1",
+              "stage": "resolve",
+              "outcome": "failed",
+              "error": "Kazumi did not find a stream within 45 seconds. Choose another source.",
+              "elapsedSeconds": 45
+            },
+            {
+              "road": 2,
+              "episode": "1",
+              "stage": "resolve",
+              "outcome": "failed",
+              "error": "Video source at player.ezdmw.com did not return a playable video. Try another source or provider.",
+              "elapsedSeconds": 1.2
+            },
+            {
+              "road": 3,
+              "episode": "01",
+              "stage": "resolve",
+              "outcome": "failed",
+              "error": "Video source at player.ezdmw.com did not return a playable video. Try another source or provider.",
+              "elapsedSeconds": 1
+            },
+            {
+              "road": 4,
+              "episode": "1",
+              "stage": "resolve",
+              "outcome": "failed",
+              "error": "Kazumi did not find a stream within 45 seconds. Choose another source.",
+              "elapsedSeconds": 45
+            }
+          ],
+          "searchTitles": [
+            "命运石之门0 OVA",
+            "命运石之门0",
+            "命运石之门：负荷领域的既视感",
+            "命运石之门"
+          ],
+          "title": "命运石之门",
+          "episodeCounts": [
+            25,
+            25,
+            25,
+            25
+          ]
+        },
+        {
+          "query": "死亡笔记",
+          "stage": "chapters",
+          "outcome": "failed",
+          "attempts": [],
+          "searchTitles": [
+            "死亡笔记"
+          ],
+          "title": "死亡笔记",
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        },
+        {
+          "query": "Ave Mujica",
+          "stage": "gateway",
+          "outcome": "passed",
+          "attempts": [
+            {
+              "road": 1,
+              "episode": "1",
+              "stage": "gateway",
+              "format": "mp4",
+              "status": 206,
+              "bytes": 1024,
+              "outcome": "passed",
+              "elapsedSeconds": 3.5
+            }
+          ],
+          "searchTitles": [
+            "BanG Dream! Ave Mujica"
+          ],
+          "title": "BanG Dream! Ave Mujica",
+          "episodeCounts": [
+            13,
+            13,
+            13
+          ]
+        }
+      ]
+    }
+  ],
+  "completedAt": "2026-10-10T07:13:22.343Z"
+}

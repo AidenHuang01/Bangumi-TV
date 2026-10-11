@@ -1,0 +1,216 @@
+{
+  "startedAt": "2026-10-10T07:07:13.870Z",
+  "engine": "kazumi",
+  "kazumiCommit": "4e821e48282d0e8e3753fd6266bb1d15e4dc0f02",
+  "rulesDirectory": "KazumiRules-availability",
+  "maxRoads": 4,
+  "methodology": "First LISTED episode; repeat with expanded road bound. ezdmw lists episodes descending: its entries here are not episode 1 and are superseded by 2026-10-10-ezdmw-episode1.json. xfdmneo listed episode 1 first. Not physical-TV decoding or full-episode coverage.",
+  "providers": [
+    {
+      "id": "ezdmw",
+      "name": "ezdmw",
+      "version": "1.2",
+      "cases": [
+        {
+          "query": "葬送的芙莉莲",
+          "stage": "gateway",
+          "outcome": "passed",
+          "attempts": [
+            {
+              "road": 1,
+              "episode": "38",
+              "stage": "gateway",
+              "format": "mp4",
+              "status": 206,
+              "bytes": 1024,
+              "outcome": "passed",
+              "elapsedSeconds": 3.7
+            }
+          ],
+          "searchTitles": [
+            "葬送的芙莉莲"
+          ],
+          "title": "葬送的芙莉莲",
+          "episodeCounts": [
+            38,
+            38,
+            38
+          ]
+        },
+        {
+          "query": "命运石之门",
+          "stage": "search",
+          "outcome": "failed",
+          "attempts": [],
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        },
+        {
+          "query": "死亡笔记",
+          "stage": "chapters",
+          "outcome": "failed",
+          "attempts": [],
+          "searchTitles": [
+            "死亡笔记"
+          ],
+          "title": "死亡笔记",
+          "error": "Kazumi source request failed. The provider may be unavailable or its rule outdated."
+        },
+        {
+          "query": "Ave Mujica",
+          "stage": "gateway",
+          "outcome": "passed",
+          "attempts": [
+            {
+              "road": 1,
+              "episode": "13",
+              "stage": "gateway",
+              "format": "mp4",
+              "status": 206,
+              "bytes": 1024,
+              "outcome": "passed",
+              "elapsedSeconds": 3.5
+            }
+          ],
+          "searchTitles": [
+            "BanG Dream! Ave Mujica"
+          ],
+          "title": "BanG Dream! Ave Mujica",
+          "episodeCounts": [
+            13,
+            13,
+            13
+          ]
+        }
+      ]
+    },
+    {
+      "id": "xfdmneo",
+      "name": "xfdmneo",
+      "version": "1.1",
+      "cases": [
+        {
+          "query": "葬送的芙莉莲",
+          "stage": "gateway",
+          "outcome": "passed",
+          "attempts": [
+            {
+              "road": 1,
+              "episode": "第01集",
+              "stage": "resolve",
+              "outcome": "failed",
+              "error": "Video source at play.xfvod.pro failed its TLS connection. Try another source or provider.",
+              "elapsedSeconds": 1.8
+            },
+            {
+              "road": 2,
+              "episode": "第01集",
+              "stage": "gateway",
+              "format": "hls",
+              "status": 206,
+              "bytes": 1024,
+              "outcome": "passed",
+              "elapsedSeconds": 1.3
+            }
+          ],
+          "searchTitles": [
+            "葬送的芙莉莲",
+            "葬送的芙莉莲 第二季"
+          ],
+          "title": "葬送的芙莉莲",
+          "episodeCounts": [
+            28,
+            28
+          ]
+        },
+        {
+          "query": "命运石之门",
+          "stage": "resolve",
+          "outcome": "failed",
+          "attempts": [
+            {
+              "road": 1,
+              "episode": "第01集",
+              "stage": "resolve",
+              "outcome": "failed",
+              "error": "Video source at play.xfvod.pro failed its TLS connection. Try another source or provider.",
+              "elapsedSeconds": 0.9
+            }
+          ],
+          "searchTitles": [
+            "命运石之门",
+            "命运石之门 聪明睿智的认知计算",
+            "命运石之门 负荷领域的既视感",
+            "命运石之门 0"
+          ],
+          "title": "命运石之门",
+          "episodeCounts": [
+            26
+          ]
+        },
+        {
+          "query": "死亡笔记",
+          "stage": "resolve",
+          "outcome": "failed",
+          "attempts": [
+            {
+              "road": 1,
+              "episode": "第01集",
+              "stage": "resolve",
+              "outcome": "failed",
+              "error": "Video source at play.xfvod.pro failed its TLS connection. Try another source or provider.",
+              "elapsedSeconds": 0.9
+            }
+          ],
+          "searchTitles": [
+            "死亡笔记"
+          ],
+          "title": "死亡笔记",
+          "episodeCounts": [
+            37
+          ]
+        },
+        {
+          "query": "Ave Mujica",
+          "stage": "resolve",
+          "outcome": "failed",
+          "attempts": [
+            {
+              "road": 1,
+              "episode": "第01集",
+              "stage": "resolve",
+              "outcome": "failed",
+              "error": "Video source at apn.moedot.net did not return a playable video. Try another source or provider.",
+              "elapsedSeconds": 1.5
+            },
+            {
+              "road": 2,
+              "episode": "第01集",
+              "stage": "resolve",
+              "outcome": "failed",
+              "error": "Video source at play.xfvod.pro failed its TLS connection. Try another source or provider.",
+              "elapsedSeconds": 0.9
+            },
+            {
+              "road": 3,
+              "episode": "第01集",
+              "stage": "resolve",
+              "outcome": "failed",
+              "error": "Video source at dl.playxf.top returned HTTP 404. Try another source or provider.",
+              "elapsedSeconds": 1.2
+            }
+          ],
+          "searchTitles": [
+            "BanG Dream! Ave Mujica"
+          ],
+          "title": "BanG Dream! Ave Mujica",
+          "episodeCounts": [
+            13,
+            13,
+            13
+          ]
+        }
+      ]
+    }
+  ],
+  "completedAt": "2026-10-10T07:07:32.057Z"
+}

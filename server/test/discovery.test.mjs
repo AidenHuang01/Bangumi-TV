@@ -11,13 +11,38 @@ const rule = { id: 'fixture', name: 'Fixture', baseURL: 'https://catalog.example
   searchName: '//a', searchResult: '//a', chapterRoads: '//ul', chapterResult: '//li/a' };
 const textResponse = (url, text) => ({ url, status: 200, headers: {}, stream: Readable.from([Buffer.from(text)]) });
 
-test('default providers load the verified 7sefun rule without enabling failed akianime', async () => {
+test('default providers load the curated, ranked snapshot and omit unavailable rules', async () => {
   const discovery = createDiscovery();
   try {
     const providers = await discovery.providers();
+    assert.deepEqual(providers.map(provider => provider.id), ['AGE', '7sefun', 'ezdmw', 'DM84']);
     assert.ok(providers.some(provider => provider.id === '7sefun' && provider.name === '7sefun'));
     assert.ok(!providers.some(provider => provider.id === 'akianime'));
     assert.equal(new Set(providers.map(provider => provider.id)).size, providers.length);
+  } finally { await discovery.close(); }
+});
+
+test('all-provider searches preserve ordering and respect the Kazumi query budget', async () => {
+  let active = 0, peak = 0;
+  const rules = Array.from({ length: 16 }, (_, i) => ({ ...rule, id: 'fixture' + i }));
+  const discovery = createDiscovery({ rules, core: {
+    async search() {
+      peak = Math.max(peak, ++active);
+      await new Promise(resolve => setTimeout(resolve, 5));
+      active--;
+      return [{ title: 'Anime', source: 'https://catalog.example/show/1' }];
+    },
+    async close() {}
+  } });
+  try {
+    const searches = [discovery.search('Anime'), discovery.search('Anime')];
+    await assert.rejects(discovery.search('Anime'), /busy/);
+    for (const result of await Promise.all(searches)) {
+      assert.deepEqual(result.providers.map(provider => provider.provider), rules.map(rule => rule.id));
+      assert.equal(result.items.length, 16);
+      assert.ok(result.providers.every(provider => !provider.error));
+    }
+    assert.equal(peak, 12);
   } finally { await discovery.close(); }
 });
 

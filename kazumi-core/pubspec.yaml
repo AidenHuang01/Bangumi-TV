@@ -1,0 +1,20 @@
+name: bangumi_kazumi_core
+description: Local Kazumi core worker for the Bangumi TV gateway.
+publish_to: none
+version: 0.4.0+1
+environment:
+  sdk: '>=3.10.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  kazumi:
+    path: ../.tools/Kazumi-reference
+  hive_ce: ^2.16.0
+  path_provider: ^2.1.5
+  flutter_inappwebview_platform_interface: ^1.3.0+1
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+flutter:
+  uses-material-design: true

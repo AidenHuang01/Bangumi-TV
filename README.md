@@ -1,10 +1,13 @@
 # Bangumi TV — streaming proof of concept
 
-An independent Samsung TV player connected to a Mac server. The TV retrieves actual
-video bytes from the Mac. No screen sharing, casting or HDMI is involved.
+A Samsung TV player connected to a Mac gateway and the **real Kazumi core**.
+The TV retrieves original video bytes from the Mac. No screen sharing, casting or
+HDMI is involved. The TV and phone apps remain our lightweight clients, not ports
+of the entire Kazumi Flutter UI.
 
 ```text
-Kazumi-compatible search → source → episode
+kazumi-core/ on Mac (original Kazumi Dart + native WKWebView)
+        Search → source → episode → extracted stream
      + configured stream / local file
                   │
          server/ on your Mac
@@ -25,22 +28,36 @@ Kazumi-compatible search → source → episode
 - Optional Referer, User-Agent and source-origin cookies stay on the Mac.
 - There is no video re-encoding or resolution reduction in the server.
 
-Version 0.2 adds anime search, source/episode selection and automatic stream
-resolution using a snapshot of MIT-licensed KazumiRules. This is an independent
-Kazumi-compatible implementation, not the Kazumi Flutter application running as
-a server. It supports selected XPath rules and sorani's nested API rule format,
-not every Kazumi rule or feature. See `server/rules/README.md` for attribution.
+Version **0.4** replaces the independent search/extraction implementation with a
+Flutter macOS worker importing Kazumi **2.3.8**, pinned to unmodified upstream
+commit `4e821e48282d0e8e3753fd6266bb1d15e4dc0f02`. It directly executes
+`Plugin.traceSearch`, `Plugin.traceChapters` / `RuleEngine`, and
+`VideoWebviewAppleImpl` with Kazumi's original modern/legacy parser scripts.
+This is actual source reuse, not just KazumiRules JSON compatibility.
+
+`server/` retains opaque selection IDs, the phone controller, queue and original
+MP4/HLS byte proxy. `tv-app/` still uses Samsung AVPlay. Kazumi's desktop player,
+UI, downloads, collection sync and **TV danmaku rendering are not migrated**.
+Changing the engine does not make inaccessible providers work or add danmaku to
+the TV automatically. Kazumi is GPL-3.0; the worker license is included at
+`kazumi-core/LICENSE`. Source: <https://github.com/Predidit/Kazumi>.
+Rule snapshot attribution remains in `server/rules/README.md`.
 
 ## Run on the Mac
 
-Requires Node.js 18 or newer and Google Chrome on the Mac for dynamic players.
-Chrome runs headlessly with a fresh isolated profile, not your personal browser.
+Requires Node.js 18+, Apple Silicon macOS, Xcode, and Homebrew Ruby 3+ for the
+project-local CocoaPods install. `setup:kazumi` downloads the checksum-verified
+Flutter 3.47.6 SDK, checks out the pinned Kazumi source, installs dependencies,
+runs core tests and builds the native worker. Tools stay under `.tools/`; nothing
+is installed into your global Flutter or CocoaPods configuration. The first build
+requires internet and several GB of free disk space.
 
 ```sh
 cd /Users/yucheng/workspace/bangumi-tv
 npm install
+npm run setup:kazumi
 npm run demo
-npm start
+TV_IP=10.0.0.53 npm start
 ```
 
 `npm run demo` uses FFmpeg to create a 45-second **1080p, 24 fps, H.264 High
@@ -58,7 +75,17 @@ to prevent idle sleep while the server runs. If macOS asks, allow incoming
 connections for Node on your home network. Ctrl+C stops the server.
 
 Environment options: `PORT` (8787), `HOST` (0.0.0.0), `MEDIA_DIR`, `SOURCES_FILE`,
-`CHROME_PATH` (defaults to the installed macOS Google Chrome executable).
+`ANIME_ENGINE` (`kazumi`, default), `KAZUMI_CORE_PORT` (8789, loopback-only).
+`npm start` starts and stops the worker with the gateway. Its separate app/data
+container does not use a personal Kazumi installation's history or cookies.
+`/api/health` reports `animeBackend.engine`, pinned revision and actual parser.
+An unavailable/mismatched core fails explicitly; there is **no silent fallback**.
+
+Explicit rollback: `TV_IP=10.0.0.53 npm run start:legacy`. Only this legacy mode
+needs Google Chrome / optional `CHROME_PATH`; it is the old independent Node
+adapter, not Kazumi. Rebuilding the Mac backend does not require reinstalling the
+existing 0.3 TV widget. Refresh the phone and search again after a server restart;
+queues and selection IDs are held in memory.
 The server has no user accounts or phone pairing. Controller writes are allowed
 on your trusted home network; anyone with access to that network can control
 playback. Do not forward its port to the internet or expose it through a tunnel.
@@ -101,13 +128,19 @@ not yet receive phone commands. No additional Samsung privileges are required.
 
 ## Find and play anime
 
-The Mac resolver preserves the embedded player's actual request Origin, Referer,
-JSON/form content type and scoped session cookies. These also accompany resolved
-streams through the proxy. Only allowlisted browser headers are forwarded;
-private-network blocking and TLS certificate verification remain enabled.
-Resolution errors distinguish parser rejection/decode failures, HTTP errors,
-TLS failures and players that never expose a stream. A search result does not
-guarantee a working video host; inaccessible or broken provider streams can still fail.
+Kazumi performs search and chapter requests with its original network stack and
+loads episode pages in its native, sandboxed macOS WKWebView. The adapter passes
+the WebView User-Agent, matching URL cookies and configured/page Referer to the
+Mac proxy. Complex iframe-specific headers may still need per-provider work.
+The private worker listens on 127.0.0.1 and requires a fresh server-only token.
+It loads only the server's configured rule snapshot; phone clients cannot submit
+arbitrary rules or source URLs. The byte proxy still DNS-checks/pins public
+addresses, scopes cookies and verifies TLS. **Native WebView subrequests do not
+share the legacy Chromium resolver's complete DNS-pinned request interception**;
+use trusted rules and keep this service on your trusted LAN, not the internet.
+Do not treat the worker as a browser sandbox for arbitrary untrusted rules.
+A search result does not guarantee a working video host; inaccessible or broken
+provider streams can still fail.
 HLS resolution also checks a child playlist and a small prefix of the first video
 segment, rather than treating a reachable playlist as proof of playable video.
 Explicit CDN region-denial responses are reported without exposing response
@@ -115,7 +148,8 @@ tokens or IP addresses; this POC does not bypass those restrictions.
 
 1. Open **Find anime** in the updated app. The test title is prefilled as
    **葬送的芙莉莲**; it can be replaced with another title.
-2. Choose **moonci** (verified with this title) or **All sources**, then **Search**.
+2. Choose **AGE** (verified through the real Kazumi core) or **All sources**, then
+   **Search**. For the initial Frieren test, playback source 4 was successful.
 3. Select a result, a playback source and an episode. Resolution can take up to
    45 seconds. Only one video is resolved at a time.
 4. The TV receives a Mac `/stream/…` URL and plays it through AVPlay. Source URLs,
@@ -140,6 +174,35 @@ It searches, lists episodes, resolves the first episode, follows proxied HLS
 playlists and reads a short video segment probe without saving an episode.
 It does not prove physical-TV playback. Resolved selections live only in memory
 and expire after six hours; restarting the Mac server requires searching again.
+
+### Curated sources
+
+`server/rules/enabled.json` now controls the provider list and recommendation
+order: AGE, 7sefun, ezdmw, DM84. The 2026-10-10 original-Kazumi audit passed
+4/4, 3/4, 2/4 and 1/4 of the four requested first-episode checks respectively.
+AGE is the primary; new ezdmw is only a limited backup for Frieren and Ave Mujica.
+See [the full availability report](reports/2026-10-10-rule-availability.md).
+Old moonci/MXdm/sorani JSON files are retained but no longer enabled by default.
+
+To add a trusted KazumiRules JSON, put it in `server/rules/` and add its filename
+stem to `enabled.json`, then restart the Mac server when playback has stopped.
+Rules are fixed snapshots; no TV reinstall is needed, but refresh the phone and
+reopen TV search to load the new provider list. This does not add danmaku.
+
+Re-run the opt-in upstream audit on isolated ports (no TV Play commands):
+
+```sh
+# Clone this reference only if it is not already present.
+git clone --depth 1 https://github.com/Predidit/KazumiRules.git .tools/KazumiRules-availability
+npm run audit:rules -- --catalog-only
+npm run audit:rules -- --providers AGE,7sefun,ezdmw,DM84 --report reports/rules-playback.json
+```
+
+The audit imports the upstream active index, uses an independent native Kazumi
+worker on 8790 and a loopback gateway on 8788, and saves only metadata/outcomes,
+not source URLs or cookies. Its default limit is two playback roads per title;
+`--max-roads 4` can expand that bound. Failures do not prove every other road
+is unusable. Use `--core-port` / `--port` if these ports are occupied.
 
 ## Add an actual video
 
@@ -234,11 +297,10 @@ Live Mac verification on 2026-10-09: **葬送的芙莉莲**, moonci, two sources
 FFprobe read the stream through our proxy and identified **1920×1080 H.264 video,
 AAC audio, approximately 26 minutes**. This is a moment-in-time source check,
 not a guarantee of future availability or successful decoding on the TV.
-Additional provider check on 2026-10-09: **7sefun** passed for 葬送的芙莉莲,
-episode 1 on **Source 4** (MP4, original bytes through the proxy, HTTP 206) and
-was added to the provider list. Source 2 failed with HTTP 404. **akianime** was
-not added because its search site failed the TLS connection from this Mac.
-Select Source 4 for this 7sefun test; TV codec support still needs confirmation.
+The old independent-adapter test of **7sefun Source 4** is superseded by the
+2026-10-10 original-Kazumi audit: Frieren has two roads, and **road 2** passed
+as MP4 through the Mac proxy. Do not use old adapter road numbers with the
+current core. **akianime** remains disabled after failed catalogue requests.
 The proxy preserves `.m3u8` playlist paths for
 [Samsung's HLS engine detection](https://developer.samsung.com/smarttv/develop/guides/multimedia/adaptive-streaming.html).
 

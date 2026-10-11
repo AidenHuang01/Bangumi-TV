@@ -1,4 +1,5 @@
 // Live opt-in test: no movie file is saved, only playlists and a short segment probe.
+import { selectAuditEpisode } from './audit-cases.mjs';
 const args = process.argv.slice(2);
 const option = (key, fallback) => args.includes(key) ? args[args.indexOf(key) + 1] : fallback;
 const base = option('--server', 'http://127.0.0.1:8787');
@@ -22,7 +23,8 @@ console.log('Episode counts:', show.roads.map(road => road.episodes.length));
 const road = show.roads[sourceNumber - 1];
 if (!road) throw new Error('Source ' + sourceNumber + ' is not available for this title');
 console.log('Playback source:', road.name);
-const episode = road.episodes[0];
+const episode = selectAuditEpisode(road.episodes);
+if (!episode) throw new Error('Episode 1 is not listed on this source');
 console.log('Resolving:', episode.name);
 const { item } = await api('/api/resolve/' + episode.id);
 console.log('Stream:', item.format, base + item.streamPath);

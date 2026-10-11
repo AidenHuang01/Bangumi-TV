@@ -168,7 +168,8 @@ export function createApp({
       }
       if (!['GET', 'HEAD'].includes(req.method)) return json(res, 405, { error: 'GET and HEAD only outside controller endpoints' });
       if (pathname === '/api/health') return json(res, 200, {
-        name: 'Bangumi TV POC', version: '0.3.0', playback: 'original', kazumiSearch: true, phoneController: true,
+        name: 'Bangumi TV POC', version: '0.4.0', playback: 'original', kazumiSearch: true, phoneController: true,
+        animeBackend: discovery.engineInfo ? await discovery.engineInfo() : { engine: 'custom' },
         uptimeSeconds: Math.round(process.uptime()), ...metrics
       });
       if (pathname === '/api/providers') return json(res, 200, { providers: await discovery.providers() });

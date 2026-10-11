@@ -3,10 +3,9 @@ import { randomBytes } from 'node:crypto';
 import { JSDOM } from 'jsdom';
 import { gunzipSync, inflateSync, brotliDecompressSync } from 'node:zlib';
 import { requestUpstream } from './upstream.mjs';
-import { createResolver } from './resolver.mjs';
+import { createResolver, sourceFailure } from './resolver.mjs';
 
 export const userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
-const ruleNames = ['AGE', 'MXdm', 'DM84', 'moonci', 'sorani', '7sefun'];
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
 
 export async function readBody(result, max = 3 * 1024 * 1024) {
@@ -53,11 +52,29 @@ export function templateRequest(config, variables) {
   return { url: url.href, method: config.method || 'GET' };
 }
 
-export function createDiscovery({ upstream = requestUpstream, rules, resolver: customResolver } = {}) {
-  const loaded = rules ? Promise.resolve(rules) : Promise.all(ruleNames.map(async name =>
+export async function loadRules() {
+  const ruleNames = JSON.parse(await readFile(new URL('../rules/enabled.json', import.meta.url), 'utf8'));
+  if (!Array.isArray(ruleNames) || !ruleNames.length || ruleNames.length > 80 ||
+      ruleNames.some(name => typeof name !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(name)) ||
+      new Set(ruleNames).size !== ruleNames.length) throw new Error('Invalid enabled rule list');
+  return Promise.all(ruleNames.map(async name =>
     ({ ...JSON.parse(await readFile(new URL('../rules/' + name + '.json', import.meta.url))), id: name })));
+}
+
+export function createDiscovery({ upstream = requestUpstream, rules, resolver: customResolver, core } = {}) {
+  const loaded = rules ? Promise.resolve(rules) : loadRules();
   const records = new Map(), streams = new Map(), pending = new Map();
-  const resolver = customResolver || createResolver({ upstream });
+  const validator = core ? createResolver({ upstream }) : null;
+  const resolver = customResolver || (core ? {
+    async resolve(episode) {
+      const started = Date.now();
+      const source = await core.resolve(episode);
+      // Stay below the installed TV widget's 55-second request timeout.
+      try { return await validator.probe(source.url, source, AbortSignal.timeout(Math.max(1, Math.min(15000, 52000 - (Date.now() - started))))); }
+      catch (error) { throw fail(sourceFailure(error, source.url), 502); }
+    },
+    async close() { await core.close(); await validator.close(); }
+  } : createResolver({ upstream }));
   let searching = 0;
   function remember(value, map = records) {
     const id = randomBytes(16).toString('hex');
@@ -84,7 +101,9 @@ export function createDiscovery({ upstream = requestUpstream, rules, resolver: c
   }
   async function searchProvider(rule, query) {
     let matches;
-    if (rule.searchMode === 'api') {
+    if (core) {
+      matches = await core.search(rule, query);
+    } else if (rule.searchMode === 'api') {
       const config = rule.searchApiConfig;
       const data = JSON.parse(await fetchRule(rule, templateRequest(config.request, { keyword: query })));
       matches = jsonPath(data, config.listPath).map(node => ({ title: String(jsonPath(node, config.namePath)[0] || ''),
@@ -107,10 +126,11 @@ export function createDiscovery({ upstream = requestUpstream, rules, resolver: c
     const media = await resolver.resolve(episode);
     const streamId = 'anime-' + remember({ ...media, kind: 'remote', title: episode.title }, streams);
     return { item: { id: streamId, title: episode.title, kind: 'remote', format: media.format,
-      description: 'Kazumi-compatible rule · original stream via Mac',
+      description: (core ? 'Kazumi core' : 'Legacy Kazumi-rule adapter') + ' · original stream via Mac',
       streamPath: '/stream/' + streamId + (media.format === 'hls' ? '/index.m3u8' : ''), subtitlePath: null } };
   }
   return {
+    async engineInfo() { return core ? core.health() : { engine: 'legacy', parser: 'Independent Node/Chromium adapter' }; },
     // Private server-only snapshot: a queued episode need not depend on a search ID's six-hour TTL.
     selection(id) { return { ...lookup(id, 'episode') }; },
     resolveSelection,
@@ -123,13 +143,23 @@ export function createDiscovery({ upstream = requestUpstream, rules, resolver: c
       if (searching >= 2) throw fail('Search is busy. Try again shortly.', 429);
       searching++;
       try {
-        const results = await Promise.all(selected.map(async rule => {
+        const results = new Array(selected.length);
+        let next = 0;
+        const searchOne = async rule => {
           try { return { provider: rule.id, items: await searchProvider(rule, query) }; }
           catch (error) {
             const message = /EPROTO|SSL|TLS/.test(error.message) ? 'Source TLS connection failed.' :
               /ENOTFOUND|EAI_AGAIN/.test(error.message) ? 'Source hostname is unavailable.' :
               /aborted|timeout|timed out/i.test(error.message) ? 'Source timed out.' : error.message;
             return { provider: rule.id, items: [], error: message };
+          }
+        };
+        // Two simultaneous searches must stay within the core's 12-query limit,
+        // even when more than six providers are installed.
+        await Promise.all(Array.from({ length: Math.min(6, selected.length) }, async () => {
+          while (next < selected.length) {
+            const index = next++;
+            results[index] = await searchOne(selected[index]);
           }
         }));
         return { query, items: results.flatMap(result => result.items),
@@ -141,7 +171,9 @@ export function createDiscovery({ upstream = requestUpstream, rules, resolver: c
       if (record.details) return record.details;
       const { rule, source, title } = record;
       let roads;
-      if (rule.chapterMode === 'api') {
+      if (core) {
+        roads = await core.chapters(rule, source);
+      } else if (rule.chapterMode === 'api') {
         const config = rule.chapterApiConfig;
         if (config.format !== 'nested') throw fail('This API chapter format is not supported yet.', 502);
         const data = JSON.parse(await fetchRule(rule, templateRequest(config.request, { source })));
