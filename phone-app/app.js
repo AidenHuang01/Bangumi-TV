@@ -3,6 +3,85 @@
   const $ = id => document.getElementById(id);
   let state = null, show = null, searchGeneration = 0, requestGeneration = 0;
   let stateBusy = false, noticeTimer, queueSignature = '';
+  let mode = 'remote', phoneItem = null, hls = null, phoneGeneration = 0, phoneDanmakuVersion = '', phoneDanmakuBusy = false;
+  const phoneVideo = $('phone-video');
+  const phoneDanmaku = window.BangumiDanmaku ? new window.BangumiDanmaku($('phone-danmaku')) : null;
+  function setMode(value) {
+    const changed = mode !== value;
+    mode = value;
+    $('tv-controls').hidden = value !== 'remote'; $('phone-player-panel').hidden = value !== 'player';
+    $('mode-remote').classList.toggle('selected', value === 'remote'); $('mode-player').classList.toggle('selected', value === 'player');
+    if (value === 'remote') { if (!phoneItem) phoneGeneration++; phoneVideo.pause(); if (hls) hls.stopLoad(); }
+    else if (hls) hls.startLoad(-1);
+    if (show && changed) renderEpisodes();
+  }
+  function stopPhone() {
+    phoneGeneration++; phoneItem = null; phoneDanmakuVersion = '';
+    if (hls) { hls.destroy(); hls = null; }
+    phoneVideo.pause(); phoneVideo.removeAttribute('src'); phoneVideo.load();
+    if (phoneDanmaku) phoneDanmaku.clear();
+    $('phone-status').textContent = '手机播放已停止。';
+  }
+  async function refreshPhoneDanmaku() {
+    if (!phoneDanmaku || !phoneItem?.danmakuPath || phoneDanmakuBusy) return;
+    const item = phoneItem;
+    phoneDanmakuBusy = true;
+    try {
+      const data = await api(item.danmakuPath + '?version=' + encodeURIComponent(phoneDanmakuVersion));
+      if (item !== phoneItem) return;
+      if (!data.unchanged) phoneDanmaku.setData(data.comments);
+      phoneDanmaku.configure(data); phoneDanmakuVersion = data.version;
+    } catch { /* Danmaku is optional and cannot stop playback. */ }
+    finally { phoneDanmakuBusy = false; }
+  }
+  async function startPhone(item, position = 0) {
+    if (!item?.streamPath?.startsWith('/stream/')) throw new Error('Invalid Mac video stream');
+    stopPhone(); setMode('player'); phoneItem = item;
+    const generation = phoneGeneration;
+    $('phone-title').textContent = item.title; $('phone-status').textContent = 'Loading…';
+    phoneVideo.onloadedmetadata = () => {
+      if (generation !== phoneGeneration) return;
+      if (position > 0) { try { phoneVideo.currentTime = Math.min(position / 1000, Math.max(0, phoneVideo.duration - 1)); } catch {} }
+    };
+    phoneVideo.onplaying = () => { if (generation === phoneGeneration) $('phone-status').textContent = '正在手机播放 · 原始画质'; };
+    phoneVideo.onerror = () => { if (generation === phoneGeneration) $('phone-status').textContent = '手机无法解码或来源读取失败，请换一条播放线路。'; };
+    const play = () => {
+      if (generation !== phoneGeneration || mode !== 'player') return;
+      const promise = phoneVideo.play();
+      if (promise?.catch) promise.catch(() => { if (generation === phoneGeneration) $('phone-status').textContent = '视频已就绪，点击播放器的播放按钮开始。'; });
+    };
+    if (item.format === 'hls' && !phoneVideo.canPlayType('application/vnd.apple.mpegurl')) {
+      if (!window.Hls?.isSupported()) throw new Error('This browser cannot play HLS. Try Safari or a current Chrome browser.');
+      hls = new window.Hls({ maxBufferLength: 30 });
+      hls.on(window.Hls.Events.MANIFEST_PARSED, play);
+      hls.on(window.Hls.Events.ERROR, (_event, data) => {
+        if (generation === phoneGeneration && data.fatal) $('phone-status').textContent = 'HLS playback failed: ' + data.details + '. Try another playback source.';
+      });
+      hls.loadSource(item.streamPath); hls.attachMedia(phoneVideo);
+    } else { phoneVideo.src = item.streamPath; play(); }
+    refreshPhoneDanmaku();
+  }
+  async function playEpisodeOnPhone(episode) {
+    stopPhone(); setMode('player');
+    const generation = phoneGeneration;
+    $('phone-status').textContent = '正在解析 ' + episode.name + '，最多约 52 秒…';
+    try {
+      const result = await api('/api/resolve/' + episode.id, {}, 60000);
+      if (generation !== phoneGeneration || mode !== 'player') return;
+      await startPhone(result.item);
+    } catch (error) {
+      if (generation === phoneGeneration) $('phone-status').textContent = error.message;
+      throw error;
+    }
+  }
+  $('mode-remote').onclick = () => setMode('remote'); $('mode-player').onclick = () => setMode('player');
+  $('phone-stop').onclick = stopPhone;
+  $('watch-current').onclick = async () => {
+    try { if (!state?.media) throw new Error('当前没有可继续的视频，请在下方选集。'); await startPhone(state.media, state.tv.position); }
+    catch (error) { notice(error.message, true); }
+  };
+  setInterval(() => { if (phoneDanmaku && phoneItem) phoneDanmaku.tick(phoneVideo.currentTime * 1000, phoneVideo.paused); }, 100);
+  setInterval(refreshPhoneDanmaku, 5000);
   function notice(text, error = false) {
     clearTimeout(noticeTimer); $('notice').textContent = text; $('notice').classList.toggle('error', error);
     noticeTimer = setTimeout(() => { $('notice').textContent = ''; }, error ? 9000 : 5000);
@@ -48,6 +127,7 @@
   function renderState(value) {
     if (state && value.revision < state.revision) return;
     state = value; connection(value.tvOnline);
+    $('watch-current').disabled = !value.media;
     $('now-title').textContent = value.active?.title || value.tv.title || 'Nothing playing';
     $('now-status').textContent = value.error || value.tv.seek?.error || (value.tv.seek?.state === 'seeking' ? 'Seeking on TV…' : '') || (!value.tvOnline ? 'TV offline. Open the updated Bangumi TV app on the TV.' :
       value.phase === 'resolving' ? 'Finding the stream on your Mac… up to 45 seconds.' :
@@ -91,7 +171,7 @@
   async function action(value) {
     renderState(await api('/api/controller/action', { method: 'POST', body: JSON.stringify(value) }, 12000));
   }
-  function playingMedia() { return state?.media; }
+  function playingMedia() { return mode === 'player' ? phoneItem : state?.media; }
   async function danmakuAction(input) {
     return api('/api/controller/danmaku', { method: 'POST', body: JSON.stringify(input) }, 25000);
   }
@@ -134,7 +214,10 @@
       const row = document.createElement('div'); row.className = 'episode';
       const title = document.createElement('strong'); title.textContent = episode.name;
       const actions = document.createElement('div'); actions.className = 'actions';
-      actions.append(button('Play on TV', async () => { await action({ action: 'play', episodeId: episode.id }); notice('Finding ' + episode.name + ' for your TV…'); }, 'primary'),
+      actions.append(button(mode === 'player' ? '在手机播放' : 'Play on TV', async () => {
+        if (mode === 'player') await playEpisodeOnPhone(episode);
+        else { await action({ action: 'play', episodeId: episode.id }); notice('Finding ' + episode.name + ' for your TV…'); }
+      }, 'primary'),
         button('+ Queue', async () => { await action({ action: 'enqueue', episodeIds: [episode.id] }); notice(episode.name + ' added to the queue.'); }));
       row.append(title, actions); $('episodes').appendChild(row);
     });
@@ -149,7 +232,7 @@
     if (generation !== requestGeneration) return;
     show = value;
     value.roads.forEach((road, index) => { const option = document.createElement('option'); option.value = index; option.textContent = road.name; $('road').appendChild(option); });
-    $('show-status').textContent = 'Play now replaces the current TV video. Queue adds to Up next.';
+    $('show-status').textContent = '播放目标由顶部模式选择。Queue 加入电视的待播列表。';
     $('queue-all').disabled = false; renderEpisodes();
   }
   $('search-form').onsubmit = async event => {

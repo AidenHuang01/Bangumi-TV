@@ -10,12 +10,20 @@
 <body>
   <main>
     <header><div><span class="eyebrow">YOUR PHONE. YOUR BIG SCREEN.</span><h1>bangumi<span> / remote</span></h1></div><span id="connection" class="badge">Connecting</span></header>
+    <nav aria-label="Playback mode"><button id="mode-remote" class="selected">电视遥控</button><button id="mode-player">手机播放器</button></nav>
     <div id="controller-panel">
-      <section class="panel now-playing">
+      <section class="panel now-playing" id="tv-controls">
         <div class="section-heading"><span class="eyebrow">ON YOUR TV</span><span class="hint">No pairing needed</span></div>
         <h2 id="now-title">Nothing playing</h2><p id="now-status" class="hint">Open the app on the TV to connect.</p>
         <div class="progress"><div id="progress-fill"></div></div><p id="playback-time" class="time">0:00 / 0:00</p>
         <div class="transport"><button id="seek-back" aria-label="Seek back 10 seconds">−10s</button><button id="toggle-play" class="primary">Pause</button><button id="seek-forward" aria-label="Seek forward 10 seconds">+10s</button><button id="stop">Stop</button></div>
+      </section>
+      <section class="panel" id="phone-player-panel" hidden>
+        <h2 id="phone-title">选择一集在手机播放</h2>
+        <div class="phone-video-wrap"><video id="phone-video" controls playsinline preload="metadata"></video><div id="phone-danmaku" class="danmaku-layer" aria-hidden="true"></div></div>
+        <p id="phone-status" class="hint" role="status">在下方搜索选集，或继续观看电视上的当前视频。</p>
+        <button id="watch-current">在手机继续当前视频</button><button id="phone-stop">停止手机播放</button>
+        <p class="hint">手机独立播放。切回遥控会暂停手机，电视播放不受影响。</p>
       </section>
       <details class="panel" id="danmaku-panel">
         <summary>Danmaku / 弹幕</summary>
@@ -33,7 +41,7 @@
       <nav aria-label="Controller views"><button id="search-tab" class="selected">Find anime</button><button id="queue-tab">Queue <span id="queue-count">0</span></button><button id="reports-tab">源测试</button></nav>
       <section id="search-panel">
         <form id="search-form" class="panel"><label for="query">Anime title</label><div class="input-row"><input id="query" type="search" maxlength="100" autocomplete="off" value="葬送的芙莉莲" placeholder="Search anime…" required><button id="search-button" class="primary">Search</button></div><label for="provider">Search source</label><select id="provider"><option value="all">All sources</option></select></form>
-        <p id="search-status" class="hint" role="status">Choose a title. Video plays only on the TV.</p>
+        <p id="search-status" class="hint" role="status">Choose a title, then an episode.</p>
         <div id="results"></div>
         <section id="episodes-panel" hidden>
           <button id="back-results" class="text-button">← Back to results</button><h2 id="show-title"></h2><p id="show-status" class="hint" role="status"></p>
@@ -54,8 +62,10 @@
       </section>
     </div>
     <p id="notice" role="status" aria-live="polite"></p>
-    <footer>No casting. No phone video playback.<br>Use sources you’re authorized to access. Keep this server on your trusted home network.</footer>
+    <footer>Original video through your Mac · remote or phone playback.<br>Use sources you’re authorized to access. Keep this server on your trusted home network.</footer>
   </main>
+  <script src="/vendor/hls.min.js"></script>
+  <script src="/shared/danmaku.js"></script>
   <script src="/remote/app.js"></script>
 </body>
 </html>

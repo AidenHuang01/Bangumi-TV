@@ -15,12 +15,16 @@ function setup(t, online = true) {
   const controller = createController({ discovery });
   if (online) controller.register({ clientId: 'phone-test-tv', version: '0.3.0' });
   window.AbortController = AbortController;
+  window.HTMLMediaElement.prototype.play = async function () { this.dataset.played = 'yes'; };
+  window.HTMLMediaElement.prototype.pause = function () { this.dataset.paused = 'yes'; };
+  window.HTMLMediaElement.prototype.load = function () {};
   window.fetch = async (path, options = {}) => {
     requests.push({ path, options }); let result, status = 200;
     try {
       result = path === '/api/controller/state' ? controller.state() :
         path === '/api/controller/action' ? controller.mutate(JSON.parse(options.body)) :
         path === '/api/providers' ? { providers: [{ id: 'moonci', name: 'moonci' }] } :
+        path.startsWith('/api/resolve/') ? { item: { id: 'anime-phone', title: 'Frieren', format: 'mp4', streamPath: '/stream/anime-phone' } } :
         path.startsWith('/api/search?') ? { items: [{ id: 'show1', title: '葬送的芙莉莲', provider: 'moonci' }], providers: [{ provider: 'moonci', count: 1 }] } :
         { roads: [{ name: 'Source 1', episodes: [{ id: 'ep1', name: '第01话' }, { id: 'ep2', name: '第02话' }] }] };
     } catch (error) { result = { error: error.message }; status = error.status || 500; }
@@ -36,9 +40,10 @@ function setup(t, online = true) {
   return { window, $, controller, requests, settle, episodes };
 }
 
-test('phone connects without pairing, searches and queues episodes without any video element', async t => {
+test('phone defaults to remote mode without loading video and can search and queue', async t => {
   const app = setup(t); await app.episodes();
-  assert.equal(app.window.document.querySelector('video, object'), null);
+  assert.equal(app.$('phone-video').getAttribute('src'), null);
+  assert.equal(app.$('phone-player-panel').hidden, true);
   assert.equal(app.window.document.querySelector('#pair-form'), null);
   assert.equal(app.$('connection').textContent, 'TV online');
   assert.equal(app.$('episodes').children.length, 2);
@@ -49,6 +54,19 @@ test('phone connects without pairing, searches and queues episodes without any v
   assert.ok(!app.requests.some(request => request.options.headers.Authorization));
 });
 
+test('phone player resolves locally without TV commands, and switching to remote pauses phone video', async t => {
+  const app = setup(t, false); await app.episodes();
+  app.$('mode-player').click();
+  await app.$('episodes').children[0].querySelector('button').onclick();
+  assert.equal(app.$('phone-player-panel').hidden, false);
+  assert.equal(app.$('phone-video').getAttribute('src'), '/stream/anime-phone');
+  assert.equal(app.$('phone-video').dataset.played, 'yes');
+  assert.ok(!app.requests.some(request => request.path === '/api/controller/action'));
+  app.$('mode-remote').click();
+  assert.equal(app.$('phone-video').dataset.paused, 'yes');
+  assert.equal(app.$('phone-player-panel').hidden, true);
+});
+
 test('Play on TV dispatches an episode ID to the Mac; the phone never fetches a stream', async t => {
   const app = setup(t); await app.episodes();
   await app.$('episodes').children[0].querySelector('button').onclick();
@@ -56,6 +74,18 @@ test('Play on TV dispatches an episode ID to the Mac; the phone never fetches a 
   assert.match(app.$('now-status').textContent, /Finding/);
   assert.ok(app.requests.some(request => request.options.body && JSON.parse(request.options.body).episodeId === 'ep1'));
   assert.ok(!app.requests.some(request => request.path.startsWith('/stream/')));
+});
+
+test('leaving player mode during resolution prevents late phone autoplay', async t => {
+  const app = setup(t, false); await app.episodes(); app.$('mode-player').click();
+  const original = app.window.fetch; let finish;
+  app.window.fetch = (url, options) => url.startsWith('/api/resolve/') ? new Promise(resolve => { finish = resolve; }) : original(url, options);
+  const waiting = app.$('episodes').children[0].querySelector('button').onclick();
+  app.$('mode-remote').click();
+  finish({ ok: true, json: async () => ({ item: { title: 'Late', format: 'mp4', streamPath: '/stream/late' } }) });
+  await waiting;
+  assert.equal(app.$('phone-video').getAttribute('src'), null);
+  assert.equal(app.$('phone-player-panel').hidden, true);
 });
 
 test('offline TV allows search/queue but reports a Play error and disables transport controls', async t => {

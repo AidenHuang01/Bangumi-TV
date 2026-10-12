@@ -37,9 +37,10 @@ This is actual source reuse, not just KazumiRules JSON compatibility.
 
 `server/` retains opaque selection IDs, the phone controller, queue and original
 MP4/HLS byte proxy. `tv-app/` still uses Samsung AVPlay. Kazumi's desktop player,
-UI, downloads, collection sync and **TV danmaku rendering are not migrated**.
-Changing the engine does not make inaccessible providers work or add danmaku to
-the TV automatically. Kazumi is GPL-3.0; the worker license is included at
+UI, downloads and collection sync are not migrated. Version 0.5 adds our own
+clock-synchronized TV/phone danmaku overlay and optional DanDanPlay integration;
+changing the engine alone does not make inaccessible providers work.
+Kazumi is GPL-3.0; the worker license is included at
 `kazumi-core/LICENSE`. Source: <https://github.com/Predidit/Kazumi>.
 Rule snapshot attribution remains in `server/rules/README.md`.
 
@@ -90,11 +91,30 @@ The server has no user accounts or phone pairing. Controller writes are allowed
 on your trusted home network; anyone with access to that network can control
 playback. Do not forward its port to the internet or expose it through a tunnel.
 
-## Phone controller (version 0.3)
+## Phone controller and player
+
+TV **0.5.0** includes the seek watchdog/fallback and danmaku overlay. The +10s
+fix prevents a missing Samsung callback from blocking every later seek, verifies
+the returned position and reports nonfatal failures to the phone. Physical-TV
+verification requires installing this widget; code tests alone do not establish
+that a particular provider supports seeking. From an interactive Terminal run
+`npm run deploy:tv` to sign, install and launch on the configured TV. Enter author
+and distributor certificate passwords only in Terminal if Tizen requests them.
 
 Open **http://10.0.0.30:8787/remote/** on your phone, on the same home Wi-Fi.
+
+Use **电视遥控 / 手机播放器** at the top to choose the playback target. In phone
+mode, selecting an episode resolves it on the Mac and plays the original stream
+in the phone browser, even with the TV offline. **在手机继续当前视频** opens the
+TV's current stream at its last reported position without stopping the TV.
+Switching back to remote mode pauses phone playback. Queue actions still target
+the TV. Safari uses native HLS; other compatible browsers use pinned, locally
+served hls.js 1.7.3 (https://github.com/video-dev/hls.js). No third-party player CDN
+is required. Some phone browsers require tapping Play after resolution. Container
+and codec support still depend on the phone browser. Danmaku settings/imports
+apply to the video selected in the current mode.
 No login, app installation or pairing is required. The independent `phone-app/`
-page has no video player and never fetches video streams.
+page defaults to remote mode and fetches video only when phone playback is chosen.
 
 - Search using the phone keyboard, pick a result, choose a source, then tap
   **Play on TV** or **+ Queue** beside an episode. Play now replaces the TV video.
@@ -102,9 +122,9 @@ page has no video player and never fetches video streams.
 - The Queue tab supports reordering, removal, clearing and **Play next on TV**.
 - The queue advances automatically when a remotely started episode finishes.
   Stop/Back does not advance it. Additions alone do not start playback.
-- Pause/resume, ±10-second seek and Stop operate the TV, not the phone.
+- In remote mode, Pause/resume, ±10-second seek and Stop operate the TV.
 - TV status and progress update approximately every two seconds. Keep Bangumi
-  TV version **0.3.0** open on the TV; browser previews are not TV receivers.
+  TV version **0.5.0** open on the TV; browser previews are not TV receivers.
 
 Queues are in memory and clear when the Mac server restarts. Episode selection
 data stays on the Mac and is held for the queue's lifetime; streams are resolved
@@ -122,7 +142,7 @@ Phone writes require JSON from the same origin, and controller requests reject
 public hostnames to mitigate cross-site/DNS-rebinding requests. These checks are
 not a substitute for a trusted network or authentication.
 
-The phone controller requires signing/installing the 0.3 TV update with the same
+The phone controller requires TV 0.3 or newer; install the current 0.5 update with the same
 `BangumiTV` profile and commands in **Install the TV app** below. Version 0.2 does
 not yet receive phone commands. No additional Samsung privileges are required.
 
@@ -161,7 +181,8 @@ Provider errors are shown separately from empty results. Rules can go stale;
 try another source. CAPTCHA, DRM and login-gated players are not bypassed. Use
 only sources and content you are authorized to access. Source quality determines
 the available resolution; preserving original bytes does not improve a low-quality source.
-Subtitles embedded in the video remain intact; external ASS/danmaku is not added.
+Subtitles embedded in the video remain intact. External ASS is not added;
+danmaku uses the optional framework described below.
 
 Live opt-in smoke test (requires a running server):
 
@@ -192,7 +213,8 @@ Old moonci/MXdm/sorani JSON files are retained but no longer enabled by default.
 To add a trusted KazumiRules JSON, put it in `server/rules/` and add its filename
 stem to `enabled.json`, then restart the Mac server when playback has stopped.
 Rules are fixed snapshots; no TV reinstall is needed, but refresh the phone and
-reopen TV search to load the new provider list. This does not add danmaku.
+reopen TV search to load the new provider list. Rules do not provide danmaku;
+that uses the separate framework below.
 
 Re-run the opt-in upstream audit on isolated ports (no TV Play commands):
 
@@ -396,8 +418,8 @@ tv-app/                 Independent TV application; no server code in package
   config.xml            Samsung/Tizen manifest and permissions
   app.js                AVPlay, HTML5 fallback, subtitles and remote controls
   test/                 Simulated native player tests; excluded from package
-phone-app/              Local mobile controller, search, queue and transport UI
-  test/                 Controller UI tests; no video playback
+phone-app/              Local mobile remote/player, search, queue and reports
+  test/                 Remote controls and phone playback lifecycle tests
 scripts/                Packaging/signing helper and launcher icon generator
 dist/                   Generated app payload and widget archive
 ```

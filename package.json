@@ -3,7 +3,9 @@
   "version": "0.4.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node server/index.mjs",
     "start:legacy": "ANIME_ENGINE=legacy node server/index.mjs",
@@ -14,9 +16,11 @@
     "audit:rules": "node server/tools/audit-rules.mjs",
     "audit:daily": "node scripts/daily-audit.mjs",
     "schedule:install": "node scripts/install-daily-audit.mjs",
-    "package:tv": "node scripts/package-tv.mjs"
+    "package:tv": "node scripts/package-tv.mjs",
+    "deploy:tv": "node scripts/deploy-tv.mjs"
   },
   "dependencies": {
+    "hls.js": "1.7.3",
     "jsdom": "26.1.0",
     "playwright-core": "1.56.1"
   }

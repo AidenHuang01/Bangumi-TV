@@ -59,3 +59,8 @@ summary { cursor: pointer; color: #a5f1d9; }
 #reports-panel .panel { margin-top: 16px; }
 #report-results details { border-top: 1px solid #34463e; padding: 10px 0; }
 nav button { padding: 10px 8px; }
+.phone-video-wrap { position: relative; background: #050809; border-radius: 12px; overflow: hidden; }
+#phone-video { display: block; width: 100%; aspect-ratio: 16/9; max-height: 60vh; }
+.danmaku-layer { position: absolute; left: 0; top: 0; width: 100%; height: 85%; overflow: hidden; pointer-events: none; z-index: 2; }
+.danmaku-comment { position: absolute; left: 0; white-space: nowrap; font: bold 18px sans-serif; text-shadow: 1px 1px 2px #000, -1px -1px 2px #000; }
+#phone-player-panel button { margin: 6px 4px 0 0; }

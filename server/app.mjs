@@ -190,6 +190,7 @@ export function createApp({
         return json(res, 200, danmaku.read(id, url.searchParams.get('version')));
       }
       if (pathname === '/shared/danmaku.js') return serveFile(req, res, await inside(tvDir, 'danmaku.js'), mimeTypes['.js']);
+      if (pathname === '/vendor/hls.min.js') return serveFile(req, res, path.join(serverDir, '../node_modules/hls.js/dist/hls.min.js'), mimeTypes['.js']);
       if (pathname === '/api/health') return json(res, 200, {
         name: 'Bangumi TV POC', version: '0.4.0', playback: 'original', kazumiSearch: true, phoneController: true,
         animeBackend: discovery.engineInfo ? await discovery.engineInfo() : { engine: 'custom' },
@@ -213,7 +214,7 @@ export function createApp({
         const asset = pathname === '/remote' || pathname === '/remote/' ? 'index.html' : pathname.slice('/remote/'.length);
         if (!['index.html', 'style.css', 'app.js'].includes(asset)) return json(res, 404, { error: 'Not found' });
         res.setHeader('Cache-Control', 'no-cache');
-        res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+        res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
         return await serveFile(req, res, await inside(controllerDir, asset), mimeTypes[path.extname(asset)]);
       }
       if (pathname === '/api/library') {
