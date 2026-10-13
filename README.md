@@ -75,6 +75,14 @@ Keep the Mac awake while watching. You can start it with `caffeinate -i npm star
 to prevent idle sleep while the server runs. If macOS asks, allow incoming
 connections for Node on your home network. Ctrl+C stops the server.
 
+To keep the phone and TV server available after a Terminal or Codex session ends,
+run `npm run service:install` once. This installs a user-level macOS LaunchAgent
+that starts the original Kazumi server at login and restarts it if it exits. The
+Mac must still be awake, logged in, and connected to the home network. Logs are
+written under ignored `server/data/logs/`. Check it with
+`launchctl print gui/$(id -u)/dev.forgetech.bangumi-server`; stop and unregister
+it with `launchctl bootout gui/$(id -u)/dev.forgetech.bangumi-server`.
+
 Environment options: `PORT` (8787), `HOST` (0.0.0.0), `MEDIA_DIR`, `SOURCES_FILE`,
 `ANIME_ENGINE` (`kazumi`, default), `KAZUMI_CORE_PORT` (8789, loopback-only).
 `npm start` starts and stops the worker with the gateway. Its separate app/data

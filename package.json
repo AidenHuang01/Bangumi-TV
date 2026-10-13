@@ -16,6 +16,7 @@
     "audit:rules": "node server/tools/audit-rules.mjs",
     "audit:daily": "node scripts/daily-audit.mjs",
     "schedule:install": "node scripts/install-daily-audit.mjs",
+    "service:install": "node scripts/install-server-service.mjs",
     "package:tv": "node scripts/package-tv.mjs",
     "deploy:tv": "node scripts/deploy-tv.mjs"
   },
