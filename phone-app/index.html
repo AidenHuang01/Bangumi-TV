@@ -41,6 +41,7 @@
       <nav aria-label="Controller views"><button id="search-tab" class="selected">Find anime</button><button id="queue-tab">Queue <span id="queue-count">0</span></button><button id="reports-tab">源测试</button></nav>
       <section id="search-panel">
         <form id="search-form" class="panel"><label for="query">Anime title</label><div class="input-row"><input id="query" type="search" maxlength="100" autocomplete="off" value="葬送的芙莉莲" placeholder="Search anime…" required><button id="search-button" class="primary">Search</button></div><label for="provider">Search source</label><select id="provider"><option value="all">All sources</option></select></form>
+        <section class="panel recent-panel" aria-labelledby="recent-heading"><h2 id="recent-heading">最近播放</h2><p id="recent-status" class="hint">最多保留 10 部，点击番名快速搜索。</p><div id="recent-list" class="recent-list"></div></section>
         <p id="search-status" class="hint" role="status">Choose a title, then an episode.</p>
         <div id="results"></div>
         <section id="episodes-panel" hidden>

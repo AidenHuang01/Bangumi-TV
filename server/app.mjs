@@ -14,6 +14,7 @@ import { createDanmaku } from './lib/danmaku.mjs';
 import { createCovers } from './lib/covers.mjs';
 import { listReports, readReport } from './lib/reports.mjs';
 import { createTVCompatibility } from './lib/tv-compatibility.mjs';
+import { createRecentHistory } from './lib/recent-history.mjs';
 
 const serverDir = path.dirname(fileURLToPath(import.meta.url));
 const allowedFiles = new Set(['index.html', 'style.css', 'app.js', 'danmaku.js', 'defaults.js', 'icon.svg']);
@@ -35,6 +36,7 @@ export function createApp({
   upstream = requestUpstream,
   discovery = createDiscovery({ upstream }),
   danmaku = createDanmaku(),
+  recentHistory = createRecentHistory({ file: null }),
   tvCompatibilityOptions = {}
 } = {}) {
   const references = createReferences(randomBytes(32));
@@ -45,7 +47,7 @@ export function createApp({
     inputURL: id => 'http://127.0.0.1:' + server.address().port + '/stream/' + id
   });
   const controller = createController({ discovery, prepareTVItem: item => tvCompatibility.prepare(item),
-    presentTVItem: item => tvCompatibility.present(item) });
+    presentTVItem: item => tvCompatibility.present(item), onPlayback: stream => recentHistory.record(stream) });
   const covers = createCovers();
 
   async function body(req, limit = 32768) {
@@ -181,6 +183,12 @@ export function createApp({
           return json(res, 400, { error: 'Unknown danmaku action' });
         }
         if (pathname === '/api/controller/info' && req.method === 'GET') return json(res, 200, controller.info());
+        if (pathname === '/api/controller/recent' && req.method === 'POST') {
+          const input = await body(req);
+          const played = /^anime-[a-f0-9]{32}$/.test(input.streamId || '') && discovery.stream(input.streamId);
+          if (!played) return json(res, 404, { error: 'Video expired. Select an episode again.' });
+          return json(res, 200, { items: await recentHistory.record(played) });
+        }
         if (tv && req.method === 'POST') {
           const input = await body(req);
           if (pathname === '/api/tv/register') return json(res, 200, controller.register(input));
@@ -205,6 +213,7 @@ export function createApp({
         tvCompatibility: tvCompatibility.status(), uptimeSeconds: Math.round(process.uptime()), ...metrics
       });
       if (pathname === '/api/providers') return json(res, 200, { providers: await discovery.providers() });
+      if (pathname === '/api/recent') return json(res, 200, { items: await recentHistory.list() });
       if (pathname === '/api/reports') return json(res, 200, { reports: await listReports(), schedule: '05:00 America/Los_Angeles' });
       if (pathname.startsWith('/api/reports/')) return json(res, 200, await readReport(pathname.slice('/api/reports/'.length)));
       if (/^\/api\/covers\/[a-f0-9]{32}$/.test(pathname)) {

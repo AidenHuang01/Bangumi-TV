@@ -124,7 +124,8 @@ export function createDiscovery({ upstream = requestUpstream, rules, resolver: c
   }
   async function resolveSelection(episode) {
     const media = await resolver.resolve(episode);
-    const streamId = 'anime-' + remember({ ...media, kind: 'remote', title: episode.title }, streams);
+    const streamId = 'anime-' + remember({ ...media, kind: 'remote', title: episode.title,
+      animeTitle: episode.animeTitle, episodeName: episode.episodeName, provider: episode.rule?.id }, streams);
     return { item: { id: streamId, title: episode.title, kind: 'remote', format: media.format,
       description: (core ? 'Kazumi core' : 'Legacy Kazumi-rule adapter') + ' · original stream via Mac',
       danmakuPath: '/api/danmaku/' + streamId,
@@ -197,7 +198,7 @@ export function createDiscovery({ upstream = requestUpstream, rules, resolver: c
       }
       const details = { id, title, provider: rule.id, roads: roads.filter(road => road.episodes.length).map(road => ({
         name: road.name, episodes: road.episodes.map(episode => ({ id: remember({ type: 'episode', rule, title: title + ' · ' + episode.name,
-          url: episode.url }), name: episode.name }))
+          animeTitle: title, episodeName: episode.name, url: episode.url }), name: episode.name }))
       })) };
       if (!details.roads.length) throw fail('No episodes found. The source rule may be outdated.', 502);
       record.details = details;

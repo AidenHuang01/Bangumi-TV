@@ -36,6 +36,7 @@
   var browseXHR;
   var resolving = false;
   var selectedShow;
+  var recentSignature = '', recentBusy = false;
   var receiverSession;
   var receiverEpoch;
   var receiverApplied = 0;
@@ -74,7 +75,7 @@
     receiverBusy = true;
     var base = server;
     if (!receiverSession) {
-      tvPost('/api/tv/register', { clientId: receiverClient, bootId: receiverBoot, version: '0.5.3' }, function (error, result) {
+      tvPost('/api/tv/register', { clientId: receiverClient, bootId: receiverBoot, version: '0.6.0' }, function (error, result) {
         receiverBusy = false;
         if (base !== server) return;
         if (error || !result.session) { receiverLabel(error ? error.message : 'Phone controller needs the updated Mac server.'); return; }
@@ -161,6 +162,7 @@
     button.classList.add('selected');
   }
   function loadProviders() {
+    loadRecent();
     var base = server;
     request(base, '/api/providers', function (error, result) {
       if (base !== server) return;
@@ -177,6 +179,37 @@
       });
       selectProvider('all', all);
       $('search-status').textContent = 'Search for a title. Use only sources you are authorized to access.';
+    });
+  }
+  function loadRecent() {
+    if (!server || recentBusy) return;
+    recentBusy = true;
+    var base = server;
+    request(base, '/api/recent', function (error, result) {
+      recentBusy = false;
+      if (base !== server) return;
+      if (error || !result || !Array.isArray(result.items)) { $('recent-status').textContent = '暂时无法加载最近播放。'; return; }
+      var items = result.items.slice(0, 10), signature = base + JSON.stringify(items);
+      $('recent-status').textContent = items.length ? '点击番名，在所有来源中快速搜索。' : '播放番剧后会显示在这里，最多保留 10 部。';
+      if (signature === recentSignature) return;
+      recentSignature = signature;
+      var container = $('recent-list'), focused = document.activeElement;
+      var focusedTitle = focused && focused.parentNode === container ? focused.title : '';
+      container.textContent = '';
+      items.forEach(function (item) {
+        var button = document.createElement('button'); button.className = 'recent-item'; button.title = '搜索 ' + item.title;
+        var title = document.createElement('strong'); title.textContent = item.title;
+        var detail = document.createElement('small'); detail.textContent = [item.episode, item.provider].filter(Boolean).join(' · ') || '点击搜索';
+        button.appendChild(title); button.appendChild(detail);
+        button.onclick = function () {
+          $('search-query').value = item.title;
+          var all = $('providers').querySelector('button');
+          if (all) selectProvider('all', all); else selectedProvider = 'all';
+          searchAnime();
+        };
+        container.appendChild(button);
+        if (focusedTitle && button.title === focusedTitle) button.focus();
+      });
     });
   }
   function searchAnime() {
@@ -389,6 +422,7 @@
     $('subtitle').textContent = ''; message('');
     show($('player-screen'), false); show($('library-screen'), true);
     document.body.classList.remove('playing');
+    loadRecent();
     if (visible(lastCard)) lastCard.focus(); else $('refresh').focus();
   }
   function startPlayback(item) {
@@ -622,4 +656,5 @@
     (/^https?:$/.test(window.location.protocol) ? window.location.protocol + '//' + window.location.host : '');
   if (server) { refresh(); loadProviders(); } else openSetup();
   if (nativePlayer) { pollReceiver(); setInterval(pollReceiver, 1500); }
+  setInterval(function () { if (!current && visible($('anime-view'))) loadRecent(); }, 10000);
 }());

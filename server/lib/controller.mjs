@@ -6,7 +6,8 @@ const equal = (a, b) => typeof a === 'string' && Buffer.byteLength(a) === Buffer
 const publicEntry = entry => entry && ({ id: entry.id, title: entry.selection.title });
 
 // One TV / one shared home queue. All source URLs and rule objects stay here, on the Mac.
-export function createController({ discovery, prepareTVItem = async item => item, presentTVItem = item => item, now = Date.now } = {}) {
+export function createController({ discovery, prepareTVItem = async item => item, presentTVItem = item => item,
+  onPlayback = async () => {}, now = Date.now } = {}) {
   const epoch = id();
   let receiver, commands = [], commandSequence = 0, queue = [], active = null;
   let generation = 0, phase = 'idle', lastError = '', closed = false;
@@ -94,6 +95,13 @@ export function createController({ discovery, prepareTVItem = async item => item
       } : null;
       receiver.playbackId = input.playbackId;
       receiver.mediaId = typeof input.mediaId === 'string' && /^anime-[a-f0-9]{32}$/.test(input.mediaId) ? input.mediaId : null;
+      if (['playing', 'paused'].includes(receiver.status) && receiver.mediaId && receiver.recordedMediaId !== receiver.mediaId) {
+        const played = discovery.stream(receiver.mediaId);
+        if (played) {
+          receiver.recordedMediaId = receiver.mediaId;
+          Promise.resolve().then(() => onPlayback(played)).catch(failure => console.error('Recent history: ' + failure.message));
+        }
+      }
       if (active && input.playbackId === active.playbackId && !['resolving', 'preparing'].includes(phase)) {
         phase = receiver.status;
         if (phase === 'error') lastError = String(input.error || 'TV playback failed. Try another source.').slice(0, 300);

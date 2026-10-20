@@ -24,7 +24,8 @@ function setup(t, online = true) {
       result = path === '/api/controller/state' ? controller.state() :
         path === '/api/controller/action' ? controller.mutate(JSON.parse(options.body)) :
         path === '/api/providers' ? { providers: [{ id: 'moonci', name: 'moonci' }] } :
-        path.startsWith('/api/resolve/') ? { item: { id: 'anime-phone', title: 'Frieren', format: 'mp4', streamPath: '/stream/anime-phone' } } :
+        path === '/api/recent' || path === '/api/controller/recent' ? { items: [{ title: 'Lycoris Recoil', episode: '第01集', provider: 'AGE' }] } :
+        path.startsWith('/api/resolve/') ? { item: { id: 'anime-' + 'd'.repeat(32), title: 'Frieren', format: 'mp4', streamPath: '/stream/anime-phone' } } :
         path.startsWith('/api/search?') ? { items: [{ id: 'show1', title: '葬送的芙莉莲', provider: 'moonci' }], providers: [{ provider: 'moonci', count: 1 }] } :
         { roads: [{ name: 'Source 1', episodes: [{ id: 'ep1', name: '第01话' }, { id: 'ep2', name: '第02话' }] }] };
     } catch (error) { result = { error: error.message }; status = error.status || 500; }
@@ -52,6 +53,26 @@ test('phone defaults to remote mode without loading video and can search and que
   app.$('queue-tab').click(); assert.equal(app.$('queue-panel').hidden, false);
   await app.$('queue').querySelectorAll('button')[2].onclick(); assert.equal(app.controller.state().queue.length, 0);
   assert.ok(!app.requests.some(request => request.options.headers.Authorization));
+});
+
+test('recent anime performs a fresh all-source search without playing or queueing anything', async t => {
+  const app = setup(t); await app.episodes();
+  assert.equal(app.$('search-form').hidden, true);
+  assert.equal(app.$('recent-list').children.length, 1);
+  await app.$('recent-list').querySelector('button').onclick();
+  assert.equal(app.$('query').value, 'Lycoris Recoil'); assert.equal(app.$('provider').value, 'all');
+  assert.equal(app.$('search-form').hidden, false); assert.equal(app.$('episodes-panel').hidden, true);
+  const searches = app.requests.filter(request => request.path.startsWith('/api/search?'));
+  assert.match(searches.at(-1).path, /q=Lycoris%20Recoil&provider=all/);
+  assert.ok(!app.requests.some(request => request.path === '/api/controller/action'));
+});
+
+test('phone adds recent history after the playing event, once per playback', async t => {
+  const app = setup(t); await app.episodes(); app.$('mode-player').click();
+  await app.$('episodes').children[0].querySelector('button').onclick();
+  assert.equal(app.requests.filter(request => request.path === '/api/controller/recent').length, 0);
+  app.$('phone-video').onplaying(); app.$('phone-video').onplaying(); await app.settle();
+  assert.equal(app.requests.filter(request => request.path === '/api/controller/recent').length, 1);
 });
 
 test('phone player resolves locally without TV commands, and switching to remote pauses phone video', async t => {

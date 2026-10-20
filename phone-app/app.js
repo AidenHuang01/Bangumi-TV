@@ -3,6 +3,7 @@
   const $ = id => document.getElementById(id);
   let state = null, show = null, searchGeneration = 0, requestGeneration = 0;
   let stateBusy = false, noticeTimer, queueSignature = '';
+  let recentSignature = '', recentBusy = false;
   let mode = 'remote', phoneItem = null, hls = null, phoneGeneration = 0, phoneDanmakuVersion = '', phoneDanmakuBusy = false;
   const phoneVideo = $('phone-video');
   const phoneDanmaku = window.BangumiDanmaku ? new window.BangumiDanmaku($('phone-danmaku')) : null;
@@ -43,7 +44,16 @@
       if (generation !== phoneGeneration) return;
       if (position > 0) { try { phoneVideo.currentTime = Math.min(position / 1000, Math.max(0, phoneVideo.duration - 1)); } catch {} }
     };
-    phoneVideo.onplaying = () => { if (generation === phoneGeneration) $('phone-status').textContent = '正在手机播放 · 原始画质'; };
+    let recorded = false;
+    phoneVideo.onplaying = () => {
+      if (generation !== phoneGeneration) return;
+      $('phone-status').textContent = '正在手机播放 · 原始画质';
+      if (!recorded && /^anime-[a-f0-9]{32}$/.test(item.id || '')) {
+        recorded = true;
+        api('/api/controller/recent', { method: 'POST', body: JSON.stringify({ streamId: item.id }) })
+          .then(result => renderRecent(result.items)).catch(() => { recorded = false; });
+      }
+    };
     phoneVideo.onerror = () => { if (generation === phoneGeneration) $('phone-status').textContent = '手机无法解码或来源读取失败，请换一条播放线路。'; };
     const play = () => {
       if (generation !== phoneGeneration || mode !== 'player') return;
@@ -113,6 +123,33 @@
       $(name + '-tab').classList.toggle('selected', value === name);
     });
     if (value === 'reports') loadReports();
+    if (value === 'search') loadRecent();
+  }
+  function renderRecent(items) {
+    items = Array.isArray(items) ? items.slice(0, 10) : [];
+    const signature = JSON.stringify(items);
+    $('recent-status').textContent = items.length ? '点击番名，在所有来源中快速搜索。' : '播放番剧后会显示在这里，最多保留 10 部。';
+    if (signature === recentSignature) return;
+    recentSignature = signature;
+    $('recent-list').textContent = '';
+    items.forEach(item => {
+      const row = button('', async () => {
+        selectTab('search'); $('query').value = item.title; $('provider').value = 'all';
+        $('search-form').hidden = false; $('search-status').hidden = false;
+        await $('search-form').onsubmit({ preventDefault() {} });
+      }, 'recent-item');
+      row.title = '搜索 ' + item.title;
+      const title = document.createElement('strong'); title.textContent = item.title;
+      const detail = document.createElement('small'); detail.textContent = [item.episode, item.provider].filter(Boolean).join(' · ') || '点击搜索';
+      row.append(title, detail); $('recent-list').appendChild(row);
+    });
+  }
+  async function loadRecent() {
+    if (recentBusy) return;
+    recentBusy = true;
+    try { renderRecent((await api('/api/recent', {}, 8000)).items); }
+    catch { $('recent-status').textContent = '暂时无法加载最近播放。'; }
+    finally { recentBusy = false; }
   }
   function button(label, callback, className) {
     const element = document.createElement('button'); element.type = 'button'; element.textContent = label;
@@ -321,6 +358,7 @@
   Object.entries(commands).forEach(([id, value]) => { $(id).onclick = async () => { $(id).disabled = true;
     try { await action(value()); } catch (error) { notice(error.message, true); } finally { await updateState(); } }; });
   async function init() {
+    loadRecent();
     await updateState();
     try {
       const settings = await api('/api/controller/danmaku');
@@ -336,5 +374,6 @@
     } catch (error) { $('search-status').textContent = error.message; }
   }
   init(); setInterval(updateState, 2000);
+  setInterval(() => { if (!document.hidden) loadRecent(); }, 10000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) updateState(); });
 }());

@@ -144,6 +144,17 @@ apply to the video selected in the current mode.
 No login, app installation or pairing is required. The independent `phone-app/`
 page defaults to remote mode and fetches video only when phone playback is chosen.
 
+TV **0.6.0** and the phone search page include **最近播放**. They share the ten
+most recently played distinct anime, newest first. Starting another episode or
+source of the same title moves it to the front and updates its episode label.
+Clicking a title searches all sources afresh; it does not autoplay or enqueue.
+TV playback is recorded after a playing/paused receiver confirmation, and phone
+playback after the browser's playing event. Failed resolutions and queue-only
+actions are not recorded. Titles are stored atomically on the Mac in ignored
+`server/data/recently-played.json` and survive server restarts; expired stream
+URLs and provider credentials are not saved in history. Earlier sessions that
+were never recorded cannot be reconstructed automatically.
+
 - Search using the phone keyboard, pick a result, choose a source, then tap
   **Play on TV** or **+ Queue** beside an episode. Play now replaces the TV video.
 - **Queue this source** adds its episodes in order (limit: 100 queue entries).

@@ -21,7 +21,8 @@ function setup(t) {
     send() {
       requests.push(this);
       if (this.url.includes('/api/resolve/')) return;
-      this.respond(this.url.includes('/api/search?') ? { items: [{ id, title: '葬送的芙莉莲', provider: 'moonci' }], providers: [{ provider: 'moonci', count: 1 }] } :
+      this.respond(this.url.endsWith('/api/recent') ? { items: [{ title: 'Lycoris Recoil', episode: '第01集', provider: 'AGE' }] } :
+        this.url.includes('/api/search?') ? { items: [{ id, title: '葬送的芙莉莲', provider: 'moonci' }], providers: [{ provider: 'moonci', count: 1 }] } :
         this.url.includes('/api/shows/') ? { roads: [{ name: 'Source 1', episodes: [{ id: episodeId, name: '第01话' }] }] } :
         this.url.includes('/api/providers') ? { providers: [{ id: 'moonci', name: 'moonci' }] } : { items: [] });
     }
@@ -39,6 +40,15 @@ function setup(t) {
   return { window, $, requests, resolve, opened, key };
 }
 const stream = { item: { title: '葬送的芙莉莲 · 第01话', streamPath: '/stream/anime-test', format: 'hls' } };
+
+test('TV recent title searches all sources using remote-focusable buttons', t => {
+  const app = setup(t);
+  const recent = app.$('recent-list').querySelector('button'); assert.ok(recent);
+  recent.click();
+  assert.equal(app.$('search-query').value, 'Lycoris Recoil');
+  assert.ok(app.requests.some(request => request.url.endsWith('/api/search?q=Lycoris%20Recoil&provider=all')));
+  assert.equal(app.opened.length, 0);
+});
 
 test('TV search → result → episode → resolve opens only the Mac proxy URL', t => {
   const app = setup(t), pending = app.resolve();

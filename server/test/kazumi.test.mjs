@@ -45,6 +45,9 @@ test('actual core adapter owns search, chapters and extraction; gateway keeps op
     assert.doesNotMatch(publicJSON, /source\.example|video\.example|private=cookie|private=secret|abababab/);
     assert.match(resolved.item.description, /^Kazumi core/);
     assert.equal(discovery.stream(resolved.item.id).cookie, 'private=cookie');
+    assert.equal(discovery.stream(resolved.item.id).animeTitle, 'Frieren');
+    assert.equal(discovery.stream(resolved.item.id).episodeName, '01');
+    assert.equal(discovery.stream(resolved.item.id).provider, 'fixture');
     assert.deepEqual(operations, ['/health', '/search', '/chapters', '/resolve']);
   } finally { await discovery.close(); }
   assert.equal(closed, true);
