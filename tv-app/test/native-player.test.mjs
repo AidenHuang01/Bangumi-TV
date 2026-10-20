@@ -147,6 +147,27 @@ test('TV does not read or control AVPlay during an asynchronous seek', () => {
   assert.ok(app.calls.some(call => call[0] === 'seek' && call[1] === 10000));
 });
 
+test('copied HLS accepts a keyframe landing beyond five seconds but rejects an unchanged position', () => {
+  for (const moved of [true, false]) {
+    const app = setup(true);
+    app.commands.push({ seq: 1, action: 'play', playbackId: 'remux-episode', item: {
+      title: 'Remux episode', streamPath: '/stream/test/tv-hls/index.m3u8', playback: 'remux', seekToleranceMs: 11302
+    } });
+    app.poll(); app.ready();
+    let time = 0;
+    app.avplay.getCurrentTime = () => time;
+    app.avplay.jumpForward = (_delta, success) => { if (moved) time = 16000; success(); };
+    app.avplay.jumpBackward = () => {};
+    app.avplay.seekTo = (_target, success) => success();
+    app.key(417);
+    for (let round = 0; round < 4; round++) for (const callback of [...app.timeouts.values()]) callback();
+    app.poll();
+    assert.equal(app.reports.at(-1).seek.state, moved ? 'done' : 'error');
+    if (moved) assert.equal(app.reports.at(-1).seek.actual, 16000);
+    else assert.match(app.reports.at(-1).seek.error, /did not jump/);
+  }
+});
+
 test('embedded subtitle text survives progress updates and expires at its duration', () => {
   const app = setup(); app.start(); app.ready();
   app.listener.onsubtitlechange(2000, 'Hello, TV');

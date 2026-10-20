@@ -13,6 +13,7 @@ import { createController } from './lib/controller.mjs';
 import { createDanmaku } from './lib/danmaku.mjs';
 import { createCovers } from './lib/covers.mjs';
 import { listReports, readReport } from './lib/reports.mjs';
+import { createTVCompatibility } from './lib/tv-compatibility.mjs';
 
 const serverDir = path.dirname(fileURLToPath(import.meta.url));
 const allowedFiles = new Set(['index.html', 'style.css', 'app.js', 'danmaku.js', 'defaults.js', 'icon.svg']);
@@ -33,11 +34,18 @@ export function createApp({
   receiverAddress = process.env.TV_IP,
   upstream = requestUpstream,
   discovery = createDiscovery({ upstream }),
-  danmaku = createDanmaku()
+  danmaku = createDanmaku(),
+  tvCompatibilityOptions = {}
 } = {}) {
   const references = createReferences(randomBytes(32));
   const metrics = { activeTransfers: 0, requests: 0, bytesSent: 0 };
-  const controller = createController({ discovery });
+  const tvCompatibility = createTVCompatibility({
+    ...tvCompatibilityOptions,
+    stream: id => discovery.stream(id),
+    inputURL: id => 'http://127.0.0.1:' + server.address().port + '/stream/' + id
+  });
+  const controller = createController({ discovery, prepareTVItem: item => tvCompatibility.prepare(item),
+    presentTVItem: item => tvCompatibility.present(item) });
   const covers = createCovers();
 
   async function body(req, limit = 32768) {
@@ -194,7 +202,7 @@ export function createApp({
       if (pathname === '/api/health') return json(res, 200, {
         name: 'Bangumi TV POC', version: '0.4.0', playback: 'original', kazumiSearch: true, phoneController: true,
         animeBackend: discovery.engineInfo ? await discovery.engineInfo() : { engine: 'custom' },
-        uptimeSeconds: Math.round(process.uptime()), ...metrics
+        tvCompatibility: tvCompatibility.status(), uptimeSeconds: Math.round(process.uptime()), ...metrics
       });
       if (pathname === '/api/providers') return json(res, 200, { providers: await discovery.providers() });
       if (pathname === '/api/reports') return json(res, 200, { reports: await listReports(), schedule: '05:00 America/Los_Angeles' });
@@ -208,7 +216,9 @@ export function createApp({
       if (/^\/api\/shows\/[a-f0-9]{32}$/.test(pathname)) return json(res, 200, await discovery.show(pathname.split('/')[3]));
       if (/^\/api\/resolve\/[a-f0-9]{32}$/.test(pathname)) {
         if (req.method !== 'GET') return json(res, 405, { error: 'Resolve requires GET' });
-        return json(res, 200, await discovery.resolve(pathname.split('/')[3]));
+        const result = await discovery.resolve(pathname.split('/')[3]);
+        const item = url.searchParams.get('target') === 'tv' ? await tvCompatibility.prepare(result.item) : result.item;
+        return json(res, 200, { ...result, item });
       }
       if (pathname === '/remote' || pathname.startsWith('/remote/')) {
         const asset = pathname === '/remote' || pathname === '/remote/' ? 'index.html' : pathname.slice('/remote/'.length);
@@ -235,6 +245,11 @@ export function createApp({
             if (!item.subtitle) return json(res, 404, { error: 'Subtitle not found' });
             return await serveFile(req, res, item.subtitle, mimeTypes['.vtt']);
           }
+          if (parts.length === 5 && parts[3] === 'tv-hls') {
+            const file = await tvCompatibility.file(item, parts[4]);
+            res.setHeader('Cache-Control', parts[4] === 'index.m3u8' ? 'no-store' : 'private, max-age=3600');
+            return await serveFile(req, res, file, mimeTypes[path.extname(file)]);
+          }
           if (item.kind === 'local') {
             if (parts.length !== 3) return json(res, 404, { error: 'Not found' });
             return await serveFile(req, res, item.file, mimeTypes[path.extname(item.file).toLowerCase()]);
@@ -258,6 +273,10 @@ export function createApp({
     }
   });
   server.requestTimeout = 0; // Long videos are expected; upstream inactivity has its own timeout.
-  server.on('close', () => { controller.close(); discovery.close().catch(error => console.error('Resolver shutdown: ' + error.message)); });
+  server.on('close', () => {
+    controller.close();
+    tvCompatibility.close().catch(error => console.error('TV cache shutdown: ' + error.message));
+    discovery.close().catch(error => console.error('Resolver shutdown: ' + error.message));
+  });
   return server;
 }

@@ -42,7 +42,8 @@ const stream = { item: { title: '葬送的芙莉莲 · 第01话', streamPath: '/
 
 test('TV search → result → episode → resolve opens only the Mac proxy URL', t => {
   const app = setup(t), pending = app.resolve();
-  assert.equal(pending.timeout, 55000);
+  assert.equal(pending.timeout, 180000);
+  assert.ok(pending.url.endsWith('?target=tv'));
   pending.respond(stream);
   assert.deepEqual(app.opened, ['http://127.0.0.1:8787/stream/anime-test']);
   assert.equal(app.$('playing-title').textContent, stream.item.title);

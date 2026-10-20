@@ -94,3 +94,17 @@ test('offline TV allows search/queue but reports a Play error and disables trans
   await app.$('queue-all').onclick(); assert.equal(app.controller.state().queue.length, 2);
   await app.$('episodes').children[0].querySelector('button').onclick(); assert.match(app.$('notice').textContent, /offline/);
 });
+
+test('TV preparation status hides an old seek error and locks transport until the new video is ready', async t => {
+  const app = setup(t); await app.settle();
+  const value = { ...app.controller.state(), revision: 100, phase: 'preparing',
+    tv: { status: 'playing', position: 1000, duration: 60000, seek: { state: 'error', error: 'Old seek failure' } } };
+  app.window.fetch = async () => ({ ok: true, json: async () => value });
+  await app.$('stop').onclick();
+  assert.match(app.$('now-status').textContent, /Preparing original-quality/);
+  assert.equal(app.$('seek-forward').disabled, true);
+  value.revision++; value.phase = 'playing';
+  await app.$('stop').onclick();
+  assert.equal(app.$('now-status').textContent, 'Old seek failure');
+  assert.equal(app.$('seek-forward').disabled, false);
+});

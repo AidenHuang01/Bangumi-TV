@@ -129,17 +129,20 @@
     state = value; connection(value.tvOnline);
     $('watch-current').disabled = !value.media;
     $('now-title').textContent = value.active?.title || value.tv.title || 'Nothing playing';
-    $('now-status').textContent = value.error || value.tv.seek?.error || (value.tv.seek?.state === 'seeking' ? 'Seeking on TV…' : '') || (!value.tvOnline ? 'TV offline. Open the updated Bangumi TV app on the TV.' :
-      value.phase === 'resolving' ? 'Finding the stream on your Mac… up to 45 seconds.' :
-      value.phase === 'loading' ? 'Loading on the TV…' : value.tv.status === 'playing' ? 'Playing on TV' :
-      value.tv.status === 'paused' ? 'Paused on TV' : 'Ready. Choose an episode or play the queue.');
+    const phaseStatus = { resolving: 'Finding the stream on your Mac… up to 45 seconds.',
+      preparing: 'Preparing original-quality video for the TV on your Mac…', loading: 'Loading on the TV…' }[value.phase];
+    $('now-status').textContent = value.error || (!value.tvOnline ? 'TV offline. Open the updated Bangumi TV app on the TV.' :
+      phaseStatus ||
+      value.tv.seek?.error || (value.tv.seek?.state === 'seeking' ? 'Seeking on TV…' : '') ||
+      (value.tv.status === 'playing' ? 'Playing on TV' :
+      value.tv.status === 'paused' ? 'Paused on TV' : 'Ready. Choose an episode or play the queue.'));
     $('playback-time').textContent = time(value.tv.position) + ' / ' + time(value.tv.duration);
     $('progress-fill').style.width = value.tv.duration > 0 ? Math.min(100, 100 * value.tv.position / value.tv.duration) + '%' : '0%';
     $('toggle-play').textContent = value.tv.status === 'paused' ? 'Resume' : 'Pause';
-    const playable = value.tvOnline && ['playing', 'paused'].includes(value.tv.status);
+    const playable = value.tvOnline && !['resolving', 'preparing', 'loading'].includes(value.phase) && ['playing', 'paused'].includes(value.tv.status);
     ['toggle-play', 'seek-back', 'seek-forward'].forEach(id => { $(id).disabled = !playable; });
     $('stop').disabled = !value.tvOnline;
-    $('play-next').disabled = !value.tvOnline || !value.queue.length || value.phase === 'resolving';
+    $('play-next').disabled = !value.tvOnline || !value.queue.length || ['resolving', 'preparing'].includes(value.phase);
     $('clear-queue').disabled = !value.queue.length;
     $('queue-count').textContent = value.queue.length;
     const signature = JSON.stringify(value.queue);

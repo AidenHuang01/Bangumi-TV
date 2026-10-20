@@ -6,7 +6,7 @@ const equal = (a, b) => typeof a === 'string' && Buffer.byteLength(a) === Buffer
 const publicEntry = entry => entry && ({ id: entry.id, title: entry.selection.title });
 
 // One TV / one shared home queue. All source URLs and rule objects stay here, on the Mac.
-export function createController({ discovery, now = Date.now } = {}) {
+export function createController({ discovery, prepareTVItem = async item => item, presentTVItem = item => item, now = Date.now } = {}) {
   const epoch = id();
   let receiver, commands = [], commandSequence = 0, queue = [], active = null;
   let generation = 0, phase = 'idle', lastError = '', closed = false;
@@ -14,7 +14,7 @@ export function createController({ discovery, now = Date.now } = {}) {
   let revision = 0;
   const online = () => !!receiver && now() - receiver.lastSeen < 10000;
   function restorePending() {
-    if (active?.fromQueue && ['resolving', 'loading'].includes(phase) && receiver?.playbackId !== active.playbackId &&
+    if (active?.fromQueue && ['resolving', 'preparing', 'loading'].includes(phase) && receiver?.playbackId !== active.playbackId &&
       !queue.some(entry => entry.id === active.id) && queue.length < 100) {
       queue.unshift({ id: active.id, selection: active.selection });
     }
@@ -42,7 +42,10 @@ export function createController({ discovery, now = Date.now } = {}) {
     work = work.then(async () => {
       if (job !== generation || closed) return;
       try {
-        const { item } = await discovery.resolveSelection(entry.selection);
+        let { item } = await discovery.resolveSelection(entry.selection);
+        if (job !== generation || closed) return;
+        if (item.format === 'mp4') { phase = 'preparing'; revision++; }
+        item = await prepareTVItem(item);
         if (job !== generation || closed) return;
         if (!online()) throw error('The TV disconnected while resolving. Open the app and retry.', 409);
         active.item = item;
@@ -91,7 +94,7 @@ export function createController({ discovery, now = Date.now } = {}) {
       } : null;
       receiver.playbackId = input.playbackId;
       receiver.mediaId = typeof input.mediaId === 'string' && /^anime-[a-f0-9]{32}$/.test(input.mediaId) ? input.mediaId : null;
-      if (active && input.playbackId === active.playbackId && phase !== 'resolving') {
+      if (active && input.playbackId === active.playbackId && !['resolving', 'preparing'].includes(phase)) {
         phase = receiver.status;
         if (phase === 'error') lastError = String(input.error || 'TV playback failed. Try another source.').slice(0, 300);
       }
@@ -111,8 +114,8 @@ export function createController({ discovery, now = Date.now } = {}) {
     media() {
       if (active?.item) return active.item;
       const stream = receiver?.mediaId && discovery.stream(receiver.mediaId);
-      return stream ? { id: stream.id, title: stream.title, format: stream.format,
-        streamPath: '/stream/' + stream.id + (stream.format === 'hls' ? '/index.m3u8' : ''), danmakuPath: '/api/danmaku/' + stream.id } : null;
+      return stream ? presentTVItem({ id: stream.id, title: stream.title, format: stream.format,
+        streamPath: '/stream/' + stream.id + (stream.format === 'hls' ? '/index.m3u8' : ''), danmakuPath: '/api/danmaku/' + stream.id }) : null;
     },
     mutate(input) {
       if (input.action === 'enqueue' || input.action === 'play') {

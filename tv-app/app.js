@@ -74,7 +74,7 @@
     receiverBusy = true;
     var base = server;
     if (!receiverSession) {
-      tvPost('/api/tv/register', { clientId: receiverClient, bootId: receiverBoot, version: '0.5.1' }, function (error, result) {
+      tvPost('/api/tv/register', { clientId: receiverClient, bootId: receiverBoot, version: '0.5.3' }, function (error, result) {
         receiverBusy = false;
         if (base !== server) return;
         if (error || !result.session) { receiverLabel(error ? error.message : 'Phone controller needs the updated Mac server.'); return; }
@@ -239,14 +239,14 @@
     cancelBrowse(); resolving = true;
     var generation = browseGeneration;
     lastCard = button;
-    $('episodes-status').textContent = 'Finding the stream for ' + episode.name + '… Mac may open an isolated background browser. Press Back to cancel waiting.';
-    browseXHR = request(server, '/api/resolve/' + episode.id, function (error, result) {
+    $('episodes-status').textContent = 'Finding and preparing ' + episode.name + ' for your TV on the Mac… Press Back to cancel waiting.';
+    browseXHR = request(server, '/api/resolve/' + episode.id + (nativePlayer ? '?target=tv' : ''), function (error, result) {
       if (generation !== browseGeneration) return;
       resolving = false;
       if (error || !result.item) { $('episodes-status').textContent = error ? error.message : 'No playable stream returned.'; button.focus(); return; }
       $('episodes-status').textContent = 'Stream ready. Select another episode to continue.';
       startPlayback(result.item);
-    }, 55000);
+    }, 180000);
   }
   function backResults() {
     cancelBrowse(); setView('anime');
@@ -397,7 +397,7 @@
     var generation = ++playGeneration;
     var streamURL = server + item.streamPath;
     $('playing-title').textContent = item.title;
-    $('playback-engine').textContent = nativePlayer ? 'Samsung AVPlay · original stream' : 'Browser player · original stream';
+    $('playback-engine').textContent = nativePlayer ? (item.playback === 'remux' ? 'Samsung AVPlay · original quality / Mac compatible stream' : 'Samsung AVPlay · original stream') : 'Browser player · original stream';
     $('toggle-subtitles').textContent = 'Subtitles: ' + (subtitlesOn ? 'on' : 'off');
     show($('library-screen'), false); show($('player-screen'), true);
     document.body.classList.add('playing');
@@ -465,6 +465,7 @@
     var from = position(), target = Math.round(Math.max(1, Math.min(Math.max(1, length - 1000), from + delta * 1000)));
     var generation = playGeneration, ticket = ++seekTicket, attempt = 0;
     var wasPaused = paused();
+    var tolerance = current.playback === 'remux' ? Math.max(5000, Math.min(30000, Number(current.seekToleranceMs) || 10000)) : 5000;
     remoteSeek = { state: 'seeking', from: from, target: target, actual: from, error: '' };
     function valid() { return generation === playGeneration && ticket === seekTicket && current; }
     function finish(error) {
@@ -492,7 +493,10 @@
         clearTimeout(seekTimer);
         seekTimer = setTimeout(function () {
           if (!valid() || number !== attempt) return;
-          if (Math.abs(position() - target) > 5000) failed(new Error('Position did not change'));
+          var actual = position(), direction = target >= from ? 1 : -1;
+          var moved = (actual - from) * direction > Math.min(1000, Math.abs(target - from) / 2);
+          if (!moved) failed(new Error('TV position did not jump'));
+          else if (Math.abs(actual - target) > tolerance) failed(new Error('TV landed too far from the requested position'));
           else finish();
         }, 750);
       }

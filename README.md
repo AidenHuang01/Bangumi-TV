@@ -101,15 +101,31 @@ playback. Do not forward its port to the internet or expose it through a tunnel.
 
 ## Phone controller and player
 
-TV **0.5.1** includes the seek watchdog/fallback and danmaku overlay. It avoids
-other AVPlay calls while Samsung is processing a seek and waits before trying
-the absolute-position fallback. The +10s handling also prevents a missing
-Samsung callback from blocking every later seek, verifies the returned position
-and reports nonfatal failures to the phone. Some MP4 sources still receive
-`PLAYER_ERROR_INVALID_STATE` on the physical 2019 Samsung TV; the gateway's
-working HTTP byte ranges do not guarantee that AVPlay will seek. Physical-TV
-verification requires installing this widget; code tests alone do not establish
-that a particular provider supports seeking. From an interactive Terminal run
+TV **0.5.3** requests a TV-compatible stream when selecting episodes. For remote
+MP4s, the Mac copies the first video/audio tracks into a complete MPEG-TS HLS VOD
+before sending Play to the TV. There is no video/audio re-encoding or resolution
+change. This bypasses AVPlay's `PLAYER_ERROR_INVALID_STATE` seeking failure seen
+with Lycoris Recoil's original MP4 on the 2019 Samsung TV. Original HLS sources
+continue through the existing proxy. The phone's own episode player still uses
+the original source; watching the current TV video uses its prepared HLS.
+
+FFmpeg is required on the Mac (`brew install ffmpeg`); `FFMPEG` can override its
+executable path. Initial MP4 playback downloads/repackages the complete episode
+before starting (about 10 seconds for the tested 24-minute episode, dependent on
+source speed). Preparation is limited to two minutes, one job at a time, two
+cached videos and 2 GiB total. Cache files live under ignored `server/data/tv-hls/`,
+are removed on orderly shutdown, and generated sessions older than six hours are
+cleaned on the first preparation after a server start. The phone shows preparation separately from
+source extraction and TV loading. Unsupported repackaging returns an error;
+there is no automatic lossy transcode. Embedded optional text subtitle tracks
+are not carried into MPEG-TS; sidecar subtitles and danmaku remain separate.
+
+The seek watchdog/fallback avoids concurrent AVPlay calls during an async jump,
+checks its returned position and reports nonfatal failures. HLS seeks can land
+a few seconds from the target at the source's existing keyframes. The Mac sends
+the measured segment length as the seek tolerance; unchanged positions still
+fail validation. Physical-TV
+testing is still necessary for other source/codec combinations. Run
 `npm run deploy:tv` to sign, install and launch on the configured TV. Enter author
 and distributor certificate passwords only in Terminal if Tizen requests them.
 
@@ -136,7 +152,7 @@ page defaults to remote mode and fetches video only when phone playback is chose
   Stop/Back does not advance it. Additions alone do not start playback.
 - In remote mode, Pause/resume, ±10-second seek and Stop operate the TV.
 - TV status and progress update approximately every two seconds. Keep Bangumi
-  TV version **0.5.0** open on the TV; browser previews are not TV receivers.
+  TV version **0.5.3** open on the TV; browser previews are not TV receivers.
 
 Queues are in memory and clear when the Mac server restarts. Episode selection
 data stays on the Mac and is held for the queue's lifetime; streams are resolved
@@ -154,7 +170,7 @@ Phone writes require JSON from the same origin, and controller requests reject
 public hostnames to mitigate cross-site/DNS-rebinding requests. These checks are
 not a substitute for a trusted network or authentication.
 
-The phone controller requires TV 0.3 or newer; install the current 0.5 update with the same
+The phone controller requires TV 0.3 or newer; install the current 0.5.3 update with the same
 `BangumiTV` profile and commands in **Install the TV app** below. Version 0.2 does
 not yet receive phone commands. No additional Samsung privileges are required.
 
