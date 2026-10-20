@@ -43,7 +43,7 @@
   var remotePlaybackId = null;
   var remoteTerminal = null;
   var remoteError = '';
-  var remoteSeek = null, seekTimer, seekTicket = 0;
+  var remoteSeek = null, seekTimer, seekTicket = 0, seekSnapshot = null;
   var receiverClient = recall('bangumi-tv-client') || 'tv-' + Date.now() + '-' + Math.random().toString(36).slice(2);
   var receiverBoot = Date.now() + '-' + Math.random().toString(36).slice(2);
   store('bangumi-tv-client', receiverClient);
@@ -74,7 +74,7 @@
     receiverBusy = true;
     var base = server;
     if (!receiverSession) {
-      tvPost('/api/tv/register', { clientId: receiverClient, bootId: receiverBoot, version: '0.5.0' }, function (error, result) {
+      tvPost('/api/tv/register', { clientId: receiverClient, bootId: receiverBoot, version: '0.5.1' }, function (error, result) {
         receiverBusy = false;
         if (base !== server) return;
         if (error || !result.session) { receiverLabel(error ? error.message : 'Phone controller needs the updated Mac server.'); return; }
@@ -330,12 +330,15 @@
     return minutes + ':' + ('0' + seconds % 60).slice(-2);
   }
   function position() {
+    if (seekSnapshot) return seekSnapshot.position;
     try { return nativePlayer ? nativePlayer.getCurrentTime() : video.currentTime * 1000; } catch (e) { return 0; }
   }
   function duration() {
+    if (seekSnapshot) return seekSnapshot.duration;
     try { return nativePlayer ? nativePlayer.getDuration() : video.duration * 1000; } catch (e) { return 0; }
   }
   function paused() {
+    if (seekSnapshot) return seekSnapshot.paused;
     try { return nativePlayer ? nativePlayer.getState() !== 'PLAYING' : video.paused; } catch (e) { return true; }
   }
   function updateTime() {
@@ -376,7 +379,7 @@
     remotePlaybackId = null; remoteError = '';
     playGeneration++;
     current = null; preparing = false; cues = []; seeking = false;
-    seekTicket++; clearTimeout(seekTimer); remoteSeek = null;
+    seekTicket++; clearTimeout(seekTimer); remoteSeek = null; seekSnapshot = null;
     clearInterval(danmakuTimer); danmakuVersion = ''; danmakuBusy = false;
     if (danmaku) danmaku.clear();
     clearInterval(subtitleTimer); clearTimeout(nativeSubtitleTimer); clearTimeout(hideTimer);
@@ -441,6 +444,7 @@
   }
   function togglePlay(force) {
     if (!current || preparing) return;
+    if (seeking) { message('A seek is in progress…'); return; }
     try {
       var play = typeof force === 'boolean' ? force : paused();
       if (nativePlayer) { if (play) nativePlayer.play(); else nativePlayer.pause(); }
@@ -460,11 +464,12 @@
     if (!isFinite(length) || length <= 0) { message('This stream does not offer seeking.'); revealControls(false); return; }
     var from = position(), target = Math.round(Math.max(1, Math.min(Math.max(1, length - 1000), from + delta * 1000)));
     var generation = playGeneration, ticket = ++seekTicket, attempt = 0;
+    var wasPaused = paused();
     remoteSeek = { state: 'seeking', from: from, target: target, actual: from, error: '' };
     function valid() { return generation === playGeneration && ticket === seekTicket && current; }
     function finish(error) {
       if (!valid()) return;
-      clearTimeout(seekTimer); seeking = false;
+      clearTimeout(seekTimer); seeking = false; seekSnapshot = null;
       remoteSeek = { state: error ? 'error' : 'done', from: from, target: target, actual: position(), error: error || '' };
       message(error || ''); updateTime(); revealControls(false);
     }
@@ -473,11 +478,17 @@
       clearTimeout(seekTimer);
       function failed(error) {
         if (!valid() || number !== attempt) return;
-        if (!absolute) return run(true);
+        seekSnapshot = null;
+        if (!absolute) {
+          // Samsung forbids another AVPlay call inside an unfinished async seek.
+          seekTimer = setTimeout(function () { if (valid() && number === attempt) run(true); }, 150);
+          return;
+        }
         finish('Seek failed: ' + (error && (error.message || error.name) || 'TV did not confirm the jump') + '. Try another playback source.');
       }
       function success() {
         if (!valid() || number !== attempt) return;
+        seekSnapshot = null;
         clearTimeout(seekTimer);
         seekTimer = setTimeout(function () {
           if (!valid() || number !== attempt) return;
@@ -487,6 +498,7 @@
       }
       seekTimer = setTimeout(function () { failed(new Error('Seek timed out')); }, 6000);
       try {
+        seekSnapshot = { position: from, duration: length, paused: wasPaused };
         if (absolute) nativePlayer.seekTo(target, success, failed);
         else if (target >= from) nativePlayer.jumpForward(target - from, success, failed);
         else nativePlayer.jumpBackward(from - target, success, failed);

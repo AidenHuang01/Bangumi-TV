@@ -101,9 +101,13 @@ playback. Do not forward its port to the internet or expose it through a tunnel.
 
 ## Phone controller and player
 
-TV **0.5.0** includes the seek watchdog/fallback and danmaku overlay. The +10s
-fix prevents a missing Samsung callback from blocking every later seek, verifies
-the returned position and reports nonfatal failures to the phone. Physical-TV
+TV **0.5.1** includes the seek watchdog/fallback and danmaku overlay. It avoids
+other AVPlay calls while Samsung is processing a seek and waits before trying
+the absolute-position fallback. The +10s handling also prevents a missing
+Samsung callback from blocking every later seek, verifies the returned position
+and reports nonfatal failures to the phone. Some MP4 sources still receive
+`PLAYER_ERROR_INVALID_STATE` on the physical 2019 Samsung TV; the gateway's
+working HTTP byte ranges do not guarantee that AVPlay will seek. Physical-TV
 verification requires installing this widget; code tests alone do not establish
 that a particular provider supports seeking. From an interactive Terminal run
 `npm run deploy:tv` to sign, install and launch on the configured TV. Enter author

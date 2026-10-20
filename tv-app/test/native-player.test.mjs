@@ -106,6 +106,8 @@ test('missing seek callbacks unlock retries and report a nonfatal error to the p
   app.avplay.seekTo = () => { attempts++; };
   app.key(417);
   for (const callback of [...app.timeouts.values()]) callback();
+  for (const callback of [...app.timeouts.values()]) callback();
+  for (const callback of [...app.timeouts.values()]) callback();
   app.poll();
   assert.equal(app.reports.at(-1).seek.state, 'error');
   assert.equal(app.reports.at(-1).status, 'playing');
@@ -117,11 +119,32 @@ test('relative seek falls back to absolute and late callbacks cannot affect a re
   app.avplay.jumpForward = (delta, success, error) => error({ name: 'NotSupportedError' });
   app.avplay.jumpBackward = () => {};
   app.key(417);
+  for (const callback of [...app.timeouts.values()]) callback();
   assert.ok(app.calls.some(call => call[0] === 'seek' && call[1] === 10000));
   const callbacks = [...app.timeouts.values()];
   app.key(10009); app.start(); app.ready();
   callbacks.forEach(callback => callback());
   assert.equal(app.elements['playback-message'].classList.contains('hidden'), true);
+});
+
+test('TV does not read or control AVPlay during an asynchronous seek', () => {
+  const app = setup(true); app.start(); app.ready();
+  let pending, waiting = false, reads = 0;
+  for (const name of ['getCurrentTime', 'getDuration', 'getState']) {
+    const original = app.avplay[name];
+    app.avplay[name] = () => { if (waiting) reads++; return original(); };
+  }
+  app.avplay.jumpForward = (_delta, _success, error) => { waiting = true; pending = error; };
+  app.avplay.jumpBackward = () => {};
+  app.key(417);
+  app.poll();
+  app.key(19);
+  assert.equal(reads, 0);
+  assert.equal(app.calls.filter(call => call[0] === 'pause').length, 0);
+  waiting = false; pending({ name: 'InvalidStateError' });
+  assert.equal(app.calls.filter(call => call[0] === 'seek').length, 0);
+  for (const callback of [...app.timeouts.values()]) callback();
+  assert.ok(app.calls.some(call => call[0] === 'seek' && call[1] === 10000));
 });
 
 test('embedded subtitle text survives progress updates and expires at its duration', () => {
