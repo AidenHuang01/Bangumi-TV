@@ -67,6 +67,24 @@ test('danmaku selects the full episode list rather than trusting truncated searc
   assert.match(app.$('notice').textContent, /42 online comments/);
 });
 
+test('phone can attach an official Mac Kazumi cache without enabling online search or uploading files', async t => {
+  const app = setup(t); await app.episodes(); app.$('mode-player').click();
+  await app.$('episodes').children[0].querySelector('button').onclick();
+  const original = app.window.fetch, calls = [];
+  app.window.fetch = async (path, options = {}) => {
+    if (!path.startsWith('/api/controller/danmaku')) return original(path, options);
+    calls.push({ path, options });
+    return { ok: true, json: async () => path.endsWith('kazumi-cache') ? {
+      message: '请选择已缓存的集数', items: [{ id: 'a'.repeat(32), title: '<b>芙莉莲</b>', provider: 'AGE', episode: 1 }]
+    } : { count: 2172 } };
+  };
+  await app.$('kazumi-cache-refresh').onclick();
+  assert.equal(app.$('kazumi-cache-list').querySelector('b'), null);
+  await app.$('kazumi-cache-list').querySelector('button').onclick();
+  assert.equal(JSON.parse(calls.at(-1).options.body).action, 'kazumi-cache');
+  assert.match(app.$('notice').textContent, /2172/);
+});
+
 test('phone defaults to remote mode without loading video and can search and queue', async t => {
   const app = setup(t); await app.episodes();
   assert.equal(app.$('phone-video').getAttribute('src'), null);

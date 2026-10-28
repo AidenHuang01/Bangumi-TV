@@ -274,6 +274,30 @@ is unusable. Use `--core-port` / `--port` if these ports are occupied.
 
 ### Danmaku framework
 
+#### Forward comments from the official Mac Kazumi app — no gateway API keys
+
+This path runs the **official desktop release**, not our rebuilt core, to obtain
+comments. In Kazumi enable **下载设置 → 缓存弹幕**, open the correct show/source,
+then use **选集 → 下载** for the desired episode. Once its `danmaku.json` exists,
+the video download need not finish for comments to be forwarded.
+
+On the phone, open **弹幕 → 读取 Mac 上的 Kazumi 弹幕**, check the displayed show
+and episode, then choose the cache for the currently playing TV/phone video.
+This reads the file directly on the Mac; no phone file upload, API key extraction,
+HTTPS interception or screen sharing is involved. TV playback uses its existing
+clock-synchronized overlay. This is a download-cache bridge, **not a live memory
+hook**: ordinary desktop streaming alone does not create a cache. Cache labels
+come from the official app's Bangumi association; mismatched seasons/source
+choices in Kazumi can still produce the wrong comments, so no automatic attach
+is attempted.
+
+The server reads only bounded `show/episode/danmaku.json` files in the official
+macOS sandbox download directory. Set `KAZUMI_CACHE_DIR` in the server environment
+if using a custom download location. Symlink escapes, oversized files and arbitrary
+browser-supplied paths are rejected. Comment files remain owned by Kazumi; our
+server never modifies/deletes them. After attaching, overlays keep comments in
+server memory until restart.
+
 TV playback has a clock-driven overlay supporting scrolling, top and bottom
 comments. Pause and seek use the video clock. Open **Danmaku / 弹幕** on the phone
 to toggle it, set a ±600-second offset, or import Bilibili XML / Dandan JSON
@@ -300,8 +324,9 @@ the matching show/episode before loading comments. Without keys, local imports
 and rendering work; online search remains disabled. Real authenticated API
 verification awaits those credentials. Without a rebuild, server-only credentials
 can still use the existing direct API adapter. The bridge is not a remote control
-interface into an already-installed official Kazumi app. No automatic cache
-watcher is installed. See https://doc.dandanplay.com/open/.
+interface into an already-installed official Kazumi app. The separate cache
+bridge above reads that app's downloaded comment files without credentials;
+no automatic cache watcher is installed. See https://doc.dandanplay.com/open/.
 
 ### Daily source reports
 

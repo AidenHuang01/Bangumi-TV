@@ -219,6 +219,24 @@
     try { await danmakuAction({ action: 'settings', enabled: $('danmaku-enabled').checked, offset: Number($('danmaku-offset').value) }); notice('Danmaku settings applied.'); }
     catch (error) { notice(error.message, true); }
   };
+  $('kazumi-cache-refresh').onclick = async () => {
+    $('kazumi-cache-refresh').disabled = true;
+    try {
+      const data = await api('/api/controller/danmaku/kazumi-cache', {}, 50000);
+      $('kazumi-cache-status').textContent = data.message;
+      $('kazumi-cache-list').textContent = '';
+      for (const cached of data.items || []) {
+        $('kazumi-cache-list').appendChild(button(cached.title + ' · 第' + cached.episode + '集 · ' + cached.provider, async () => {
+          const media = playingMedia();
+          if (!media?.id) throw new Error('请先在电视或手机播放对应的那一集，再选择弹幕。');
+          const result = await danmakuAction({ action: 'kazumi-cache', streamId: media.id, cacheId: cached.id });
+          notice('已转发 ' + result.count + ' 条官方 Kazumi 弹幕到当前视频。');
+          refreshPhoneDanmaku();
+        }));
+      }
+    } catch (error) { notice(error.message, true); }
+    finally { $('kazumi-cache-refresh').disabled = false; }
+  };
   $('danmaku-file').onchange = async () => {
     const file = $('danmaku-file').files[0], media = playingMedia();
     if (!file) return;

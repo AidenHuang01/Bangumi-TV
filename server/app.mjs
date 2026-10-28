@@ -11,6 +11,7 @@ import { requestUpstream, validateRemoteURL, isPrivateAddress } from './lib/upst
 import { createDiscovery, readBody } from './lib/discovery.mjs';
 import { createController } from './lib/controller.mjs';
 import { createDanmaku } from './lib/danmaku.mjs';
+import { createKazumiCache } from './lib/kazumi-cache.mjs';
 import { createCovers } from './lib/covers.mjs';
 import { listReports, readReport } from './lib/reports.mjs';
 import { createTVCompatibility } from './lib/tv-compatibility.mjs';
@@ -36,6 +37,7 @@ export function createApp({
   upstream = requestUpstream,
   discovery = createDiscovery({ upstream }),
   danmaku = createDanmaku(),
+  kazumiCache = createKazumiCache(),
   recentHistory = createRecentHistory({ file: null }),
   tvCompatibilityOptions = {}
 } = {}) {
@@ -171,6 +173,9 @@ export function createApp({
           return json(res, 403, { error: 'Controller requests must come from this Mac server.' });
         }
         if (pathname === '/api/controller/danmaku' && req.method === 'GET') return json(res, 200, danmaku.status());
+        if (pathname === '/api/controller/danmaku/kazumi-cache' && req.method === 'GET') {
+          return json(res, 200, await kazumiCache.list());
+        }
         if (pathname === '/api/controller/danmaku/search' && req.method === 'GET') {
           return json(res, 200, await danmaku.search(url.searchParams.get('anime'), url.searchParams.get('episode')));
         }
@@ -182,6 +187,10 @@ export function createApp({
           if (input.action === 'settings') return json(res, 200, danmaku.settings(input));
           if (!discovery.stream(input.streamId || '')) return json(res, 404, { error: 'Choose a playing video first.' });
           if (input.action === 'import') return json(res, 200, danmaku.import(input.streamId, input.content));
+          if (input.action === 'kazumi-cache') {
+            const cached = await kazumiCache.read(input.cacheId);
+            return json(res, 200, danmaku.import(input.streamId, cached.content, cached.source));
+          }
           if (input.action === 'attach') return json(res, 200, await danmaku.attach(input.streamId, input.episodeId));
           return json(res, 400, { error: 'Unknown danmaku action' });
         }

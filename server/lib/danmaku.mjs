@@ -76,7 +76,7 @@ export function createDanmaku({ appId = process.env.DANDAN_APP_ID || '', appSecr
   return {
     status() { return { configured, engine: useCore ? 'kazumi' : 'dandanplay', ...settings,
       message: configured ? (useCore ? 'Kazumi danmaku connected. Choose a show and episode.' : 'DanDanPlay configured. Choose an episode match.')
-        : useCore ? 'Kazumi bridge connected, but this build has no API credentials. Official Kazumi cache JSON / XML import is available.'
+        : useCore ? '源码构建未配置在线 API。下方“官方 Kazumi 弹幕转发”可免密钥读取 Mac 上的官方客户端缓存。'
           : 'Online danmaku awaits API keys. XML / JSON import is available.' }; },
     settings(input) {
       if (typeof input.enabled === 'boolean') settings.enabled = input.enabled;
@@ -90,7 +90,7 @@ export function createDanmaku({ appId = process.env.DANDAN_APP_ID || '', appSecr
       return { ...this.status(), version: current, source: entry?.source || null, count: entry?.comments.length || 0,
         ...(version === current ? { unchanged: true } : { comments: entry?.comments || [] }) };
     },
-    import(streamId, content) { return put(streamId, parseDanmaku(content), 'Imported file'); },
+    import(streamId, content, source = 'Imported file') { return put(streamId, parseDanmaku(content), source); },
     async search(anime, episode) {
       if (!anime?.trim() || anime.length > 100) throw fail('Enter an anime title');
       if (useCore) return core.danmakuSearch(anime);
