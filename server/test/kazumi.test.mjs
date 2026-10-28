@@ -15,6 +15,28 @@ test('Kazumi bridge rejects non-loopback endpoints and missing session tokens', 
   assert.throws(() => createKazumiClient({ baseURL: 'http://127.0.0.1:8789/', token: '' }));
 });
 
+test('native danmaku endpoints use the same private authenticated worker channel', async () => {
+  const operations = [];
+  const core = createKazumiClient({ baseURL: 'http://127.0.0.1:8789/', token,
+    fetcher: async (url, options) => {
+      assert.equal(options.headers.Authorization, 'Bearer ' + token);
+      operations.push([url.pathname, JSON.parse(options.body)]);
+      return response({ comments: [] });
+    } });
+  await core.danmakuSearch('芙莉莲');
+  await core.danmakuEpisodes('123');
+  await core.danmakuComments('1230001');
+  assert.deepEqual(operations, [['/danmaku/search', { anime: '芙莉莲' }],
+    ['/danmaku/episodes', { animeId: 123 }], ['/danmaku/comments', { episodeId: 1230001 }]]);
+});
+
+test('missing native danmaku authorization is actionable, not swallowed as a source failure', async () => {
+  const message = 'Kazumi danmaku has no API credentials. Rebuilding open source does not include official release credentials. Local JSON import is available.';
+  const core = createKazumiClient({ baseURL: 'http://127.0.0.1:8789/', token,
+    fetcher: async () => response({ error: message }, 503) });
+  await assert.rejects(core.danmakuSearch('芙莉莲'), { message, status: 503 });
+});
+
 test('actual core adapter owns search, chapters and extraction; gateway keeps opaque IDs and validates video bytes', async () => {
   const operations = []; let closed = false;
   const core = createKazumiClient({ baseURL: 'http://127.0.0.1:8789/', token, close: async () => { closed = true; },

@@ -9,6 +9,9 @@ import { validateRemoteURL, isPrivateAddress } from './upstream.mjs';
 export const kazumiCommit = '4e821e48282d0e8e3753fd6266bb1d15e4dc0f02';
 const failure = (message, status = 502) => Object.assign(new Error(message), { status });
 const messages = new Set([
+  'Kazumi danmaku has no API credentials. Rebuilding open source does not include official release credentials. Local JSON import is available.',
+  'Kazumi danmaku request failed. Check API authorization, quota and network.',
+  'Kazumi danmaku is busy. Try again shortly.',
   'Source requires manual verification. Choose another provider.',
   'Kazumi source request failed. The provider may be unavailable or its rule outdated.',
   'Kazumi did not find a stream within 45 seconds. Choose another source.',
@@ -35,7 +38,7 @@ export function createKazumiClient({ baseURL, token, fetcher = fetch, close = as
       while (true) {
         const { value, done } = await reader.read(); if (done) break;
         size += value.length;
-        if (size > 2 * 1024 * 1024) { await reader.cancel(); throw failure('Kazumi response is too large.'); }
+        if (size > (operation === '/danmaku/comments' ? 4 : 2) * 1024 * 1024) { await reader.cancel(); throw failure('Kazumi response is too large.'); }
         parts.push(Buffer.from(value));
       }
     } catch { throw failure('Kazumi core returned an invalid response.'); }
@@ -43,7 +46,7 @@ export function createKazumiClient({ baseURL, token, fetcher = fetch, close = as
     try { data = JSON.parse(Buffer.concat(parts).toString('utf8')); }
     catch { throw failure('Kazumi core returned an invalid response.'); }
     if (!response.ok) throw failure(messages.has(data?.error) ? data.error : 'Kazumi core request failed.',
-      [429, 504].includes(response.status) ? response.status : 502);
+      [429, 503, 504].includes(response.status) ? response.status : 502);
     return data;
   }
   const url = input => {
@@ -82,6 +85,9 @@ export function createKazumiClient({ baseURL, token, fetcher = fetch, close = as
       return { url: url(data.url), format: data.format === 'hls' ? 'hls' : 'mp4',
         referer: safeHeader(data.referer), userAgent: safeHeader(data.userAgent), cookie: safeHeader(data.cookie) };
     },
+    danmakuSearch(anime) { return call('/danmaku/search', { anime }); },
+    danmakuEpisodes(animeId) { return call('/danmaku/episodes', { animeId: Number(animeId) }); },
+    danmakuComments(episodeId) { return call('/danmaku/comments', { episodeId: Number(episodeId) }); },
     close
   };
 }

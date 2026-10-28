@@ -41,6 +41,32 @@ function setup(t, online = true) {
   return { window, $, controller, requests, settle, episodes };
 }
 
+test('danmaku selects the full episode list rather than trusting truncated search episodes', async t => {
+  const app = setup(t); await app.episodes(); app.$('mode-player').click();
+  await app.$('episodes').children[0].querySelector('button').onclick();
+  const original = app.window.fetch, calls = [];
+  app.window.fetch = async (path, options = {}) => {
+    if (!path.startsWith('/api/controller/danmaku')) return original(path, options);
+    calls.push({ path, options });
+    const data = path.includes('/search?') ? { animes: [{ animeId: 123, animeTitle: '<b>芙莉莲</b>', episodes: [{ episodeId: 1 }] }] }
+      : path.includes('/episodes?') ? { bangumi: { episodes: [{ episodeId: 1230009, episodeTitle: '第9话' }] } }
+        : { count: 42 };
+    return { ok: true, json: async () => data };
+  };
+  app.$('danmaku-query').value = '芙莉莲';
+  await app.$('danmaku-search').onclick();
+  assert.equal(app.$('danmaku-matches').children.length, 1);
+  assert.equal(app.$('danmaku-matches').querySelector('b'), null);
+  await app.$('danmaku-matches').querySelector('button').onclick();
+  assert.match(app.$('danmaku-matches').textContent, /第9话/);
+  await app.$('danmaku-matches').querySelector('button').onclick();
+  const attached = JSON.parse(calls.at(-1).options.body);
+  assert.equal(attached.action, 'attach');
+  assert.equal(attached.episodeId, 1230009);
+  assert.equal(attached.streamId, 'anime-' + 'd'.repeat(32));
+  assert.match(app.$('notice').textContent, /42 online comments/);
+});
+
 test('phone defaults to remote mode without loading video and can search and queue', async t => {
   const app = setup(t); await app.episodes();
   assert.equal(app.$('phone-video').getAttribute('src'), null);

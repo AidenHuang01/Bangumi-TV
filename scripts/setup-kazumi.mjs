@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { kazumiCommit } from '../server/lib/kazumi-client.mjs';
+import { withKazumiDefines } from './lib/kazumi-defines.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const toolsDir = path.join(root, '.tools');
@@ -66,5 +67,6 @@ const cwd = path.join(root, 'kazumi-core');
 await run(sdk, ['--suppress-analytics', 'pub', 'get'], { cwd, env });
 await run(sdk, ['--suppress-analytics', 'analyze'], { cwd, env });
 await run(sdk, ['--suppress-analytics', 'test'], { cwd, env });
-await run(sdk, ['--suppress-analytics', 'build', 'macos', '--release'], { cwd, env });
+await withKazumiDefines({ root, env }, args =>
+  run(sdk, ['--suppress-analytics', 'build', 'macos', '--release', ...args], { cwd, env }));
 console.log(`Built real Kazumi core ${kazumiCommit}. Start with TV_IP=10.0.0.53 npm start.`);

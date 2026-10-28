@@ -21,8 +21,8 @@ export function parseDanmaku(content) {
   } else {
     let data;
     try { data = JSON.parse(content); } catch { throw fail('Use Bilibili XML or danmaku JSON'); }
-    values = Array.isArray(data) ? data : data.comments;
-    if (!Array.isArray(values)) throw fail('JSON must contain a comments array');
+    values = Array.isArray(data) ? data : data?.comments ?? data?.danmakus;
+    if (!Array.isArray(values)) throw fail('JSON must contain a comments or Kazumi danmakus array');
     values = values.map(row => {
       if (!row || typeof row !== 'object') return {};
       if (typeof row.p !== 'string') return row;
@@ -37,10 +37,12 @@ export function parseDanmaku(content) {
     })).sort((a, b) => a.time - b.time);
 }
 
-export function createDanmaku({ appId = process.env.DANDAN_APP_ID || '', appSecret = process.env.DANDAN_APP_SECRET || '', fetcher = fetch } = {}) {
+export function createDanmaku({ appId = process.env.DANDAN_APP_ID || '', appSecret = process.env.DANDAN_APP_SECRET || '', fetcher = fetch,
+  core, coreConfigured = false } = {}) {
   const files = new Map();
   let revision = 0, settings = { enabled: true, offset: 0, opacity: 0.8 };
-  const configured = !!(appId && appSecret);
+  const useCore = !!core && (coreConfigured || !(appId && appSecret));
+  const configured = useCore ? coreConfigured : !!(appId && appSecret);
   async function api(path, params = {}) {
     if (!configured) throw fail('Add DANDAN_APP_ID and DANDAN_APP_SECRET on the Mac to enable online danmaku.');
     const timestamp = String(Math.floor(Date.now() / 1000));
@@ -72,7 +74,10 @@ export function createDanmaku({ appId = process.env.DANDAN_APP_ID || '', appSecr
     return { count: comments.length, source };
   }
   return {
-    status() { return { configured, ...settings, message: configured ? 'DanDanPlay configured. Choose an episode match.' : 'Online danmaku awaits API keys. XML / JSON import is available.' }; },
+    status() { return { configured, engine: useCore ? 'kazumi' : 'dandanplay', ...settings,
+      message: configured ? (useCore ? 'Kazumi danmaku connected. Choose a show and episode.' : 'DanDanPlay configured. Choose an episode match.')
+        : useCore ? 'Kazumi bridge connected, but this build has no API credentials. Official Kazumi cache JSON / XML import is available.'
+          : 'Online danmaku awaits API keys. XML / JSON import is available.' }; },
     settings(input) {
       if (typeof input.enabled === 'boolean') settings.enabled = input.enabled;
       if (input.offset !== undefined) { if (!Number.isFinite(input.offset) || Math.abs(input.offset) > 600) throw fail('Offset must be within ±600 seconds'); settings.offset = input.offset; }
@@ -88,12 +93,19 @@ export function createDanmaku({ appId = process.env.DANDAN_APP_ID || '', appSecr
     import(streamId, content) { return put(streamId, parseDanmaku(content), 'Imported file'); },
     async search(anime, episode) {
       if (!anime?.trim() || anime.length > 100) throw fail('Enter an anime title');
+      if (useCore) return core.danmakuSearch(anime);
       return api('/api/v2/search/episodes', { anime, episode: String(episode || '').slice(0, 100) });
     },
+    async episodes(animeId) {
+      if (!/^[1-9]\d{0,14}$/.test(String(animeId)) || !Number.isSafeInteger(Number(animeId))) throw fail('Invalid anime ID');
+      if (useCore) return core.danmakuEpisodes(animeId);
+      return api('/api/v2/bangumi/' + animeId);
+    },
     async attach(streamId, episodeId) {
-      if (!/^\d{1,16}$/.test(String(episodeId))) throw fail('Invalid episode ID');
-      const data = await api('/api/v2/comment/' + episodeId, { withRelated: 'true' });
-      return put(streamId, parseDanmaku(JSON.stringify(data)), 'DanDanPlay · ' + episodeId);
+      if (!/^[1-9]\d{0,15}$/.test(String(episodeId)) || !Number.isSafeInteger(Number(episodeId))) throw fail('Invalid episode ID');
+      const data = useCore ? await core.danmakuComments(episodeId)
+        : await api('/api/v2/comment/' + episodeId, { withRelated: 'true' });
+      return put(streamId, parseDanmaku(JSON.stringify(data)), (useCore ? 'Kazumi · ' : 'DanDanPlay · ') + episodeId);
     }
   };
 }

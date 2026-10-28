@@ -11,6 +11,7 @@ import 'package:kazumi/services/storage/storage.dart';
 import 'package:kazumi/services/video_source/video_source_format.dart';
 import 'package:kazumi/webview/video/impl/video_webview_apple_impl.dart';
 import 'package:path_provider/path_provider.dart';
+import 'danmaku_bridge.dart';
 
 const upstreamCommit = '4e821e48282d0e8e3753fd6266bb1d15e4dc0f02';
 const upstreamVersion = '2.3.8';
@@ -83,6 +84,7 @@ class CoreWorker {
   final Map<String, Plugin> plugins;
   bool resolving = false;
   int querying = 0;
+  final danmaku = KazumiDanmakuBridge();
 
   Future<void> start() async {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, port);
@@ -111,13 +113,21 @@ class CoreWorker {
           'upstreamCommit': upstreamCommit,
           'upstreamVersion': upstreamVersion,
           'parser': 'VideoWebviewAppleImpl',
-          'capabilities': ['search', 'chapters', 'resolve'],
+          'capabilities': ['search', 'chapters', 'resolve', 'danmaku'],
+          'danmaku': {'configured': danmaku.configured},
           'resolving': resolving,
         });
         return;
       }
       if (request.method != 'POST' ||
-          !['/search', '/chapters', '/resolve'].contains(request.uri.path)) {
+          ![
+            '/search',
+            '/chapters',
+            '/resolve',
+            '/danmaku/search',
+            '/danmaku/episodes',
+            '/danmaku/comments',
+          ].contains(request.uri.path)) {
         respond(404, {'error': 'Unknown operation'});
         return;
       }
@@ -134,6 +144,10 @@ class CoreWorker {
         }
       }
       final input = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
+      if (request.uri.path.startsWith('/danmaku/')) {
+        respond(200, await danmaku.handle(request.uri.path, input));
+        return;
+      }
       final plugin = plugins[input['provider']];
       if (plugin == null) {
         respond(400, {'error': 'Unknown provider'});
@@ -206,6 +220,8 @@ class CoreWorker {
           querying--;
         }
       }
+    } on DanmakuBridgeException catch (error) {
+      respond(error.status, {'error': error.message});
     } on CaptchaRequiredException {
       respond(502, {
         'error':

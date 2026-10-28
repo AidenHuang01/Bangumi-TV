@@ -235,11 +235,19 @@
     try {
       const data = await api('/api/controller/danmaku/search?anime=' + encodeURIComponent($('danmaku-query').value), {}, 25000);
       $('danmaku-matches').textContent = '';
-      for (const anime of data.animes || []) for (const episode of anime.episodes || []) {
-        $('danmaku-matches').appendChild(button(anime.animeTitle + ' · ' + episode.episodeTitle, async () => {
+      function renderDanmakuEpisodes(anime, episodes) {
+        $('danmaku-matches').textContent = '';
+        for (const episode of episodes) $('danmaku-matches').appendChild(button(anime.animeTitle + ' · ' + episode.episodeTitle, async () => {
           const media = playingMedia(); if (!media?.id) throw new Error('Start an episode first.');
           const result = await danmakuAction({ action: 'attach', streamId: media.id, episodeId: episode.episodeId });
           notice(result.count + ' online comments loaded.');
+        }));
+        if (!episodes.length) $('danmaku-matches').textContent = 'No episodes found for this show.';
+      }
+      for (const anime of data.animes || []) {
+        $('danmaku-matches').appendChild(button(anime.animeTitle + ' · Select episodes', async () => {
+          const result = await api('/api/controller/danmaku/episodes?animeId=' + encodeURIComponent(anime.animeId), {}, 25000);
+          renderDanmakuEpisodes(anime, result.bangumi?.episodes || []);
         }));
       }
       if (!$('danmaku-matches').children.length) $('danmaku-matches').textContent = 'No episodes found. Try a more specific title.';

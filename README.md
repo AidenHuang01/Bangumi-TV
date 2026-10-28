@@ -277,18 +277,31 @@ is unusable. Use `--core-port` / `--port` if these ports are occupied.
 TV playback has a clock-driven overlay supporting scrolling, top and bottom
 comments. Pause and seek use the video clock. Open **Danmaku / 弹幕** on the phone
 to toggle it, set a ±600-second offset, or import Bilibili XML / Dandan JSON
+or an official Kazumi downloaded-episode `danmaku.json` cache (wrapper or array)
 for the current episode. Imports stay in Mac memory and clear on restart.
 Text is rendered as text, never executable HTML; imports are limited to 4 MB.
 
-Online integration uses the same DanDanPlay service as Kazumi. When your own
+The native core exposes Kazumi's original `DanmakuApi` through authenticated
+loopback endpoints. When built with credentials, the gateway uses that module for
+show search, full episode lists and comments; the TV renders comments using its
+own playback clock. Search requires selecting a show and then an episode, avoiding
+the search API's potentially truncated episode lists.
+
+**Open source does not include Kazumi's official-release API credentials.** Adding
+this bridge or rebuilding Kazumi does not automatically enable online comments.
+Online access uses 弹弹play开放弹幕网络 (https://www.dandanplay.com/). When your own
 credentials are ready, copy the structure of `server/settings.example.json` into
 `server/settings.local.json`, fill `dandan.appId` and `dandan.appSecret`, then
-restart the server. This local file is ignored by Git. Alternatively set
+run `npm run setup:kazumi` and restart the server to activate the native bridge.
+This local file is ignored by Git. Alternatively set
 `DANDAN_APP_ID` and `DANDAN_APP_SECRET` in the server environment. Keys are never
 sent to the phone or TV. The phone's online search lets you explicitly select
 the matching show/episode before loading comments. Without keys, local imports
 and rendering work; online search remains disabled. Real authenticated API
-verification awaits those credentials. See https://doc.dandanplay.com/open/.
+verification awaits those credentials. Without a rebuild, server-only credentials
+can still use the existing direct API adapter. The bridge is not a remote control
+interface into an already-installed official Kazumi app. No automatic cache
+watcher is installed. See https://doc.dandanplay.com/open/.
 
 ### Daily source reports
 

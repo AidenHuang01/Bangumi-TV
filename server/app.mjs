@@ -174,6 +174,9 @@ export function createApp({
         if (pathname === '/api/controller/danmaku/search' && req.method === 'GET') {
           return json(res, 200, await danmaku.search(url.searchParams.get('anime'), url.searchParams.get('episode')));
         }
+        if (pathname === '/api/controller/danmaku/episodes' && req.method === 'GET') {
+          return json(res, 200, await danmaku.episodes(url.searchParams.get('animeId')));
+        }
         if (pathname === '/api/controller/danmaku' && req.method === 'POST') {
           const input = await body(req, 5 * 1024 * 1024);
           if (input.action === 'settings') return json(res, 200, danmaku.settings(input));
