@@ -62,7 +62,7 @@ nav button { padding: 10px 8px; }
 .phone-video-wrap { position: relative; background: #050809; border-radius: 12px; overflow: hidden; }
 #phone-video { display: block; width: 100%; aspect-ratio: 16/9; max-height: 60vh; }
 .danmaku-layer { position: absolute; left: 0; top: 0; width: 100%; height: 85%; overflow: hidden; pointer-events: none; z-index: 2; }
-.danmaku-comment { position: absolute; left: 0; white-space: nowrap; font: bold 18px sans-serif; text-shadow: 1px 1px 2px #000, -1px -1px 2px #000; }
+.danmaku-comment { position: absolute; left: 0; white-space: nowrap; font: bold 18px sans-serif; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000; will-change: transform; backface-visibility: hidden; }
 #phone-player-panel button { margin: 6px 4px 0 0; }
 .recent-panel h2 { margin-top: 0; }
 .recent-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }

@@ -283,6 +283,25 @@ the video, and has its own show/hide control. Episode changes cancel stale jobs;
 only caches with verified acquisition provenance are eligible for automatic loading.
 Older caches remain available through explicit manual selection.
 
+#### Smooth overlay animation (TV 0.6.2)
+
+Update the installed TV widget to 0.6.2 and refresh the phone page. The shared
+renderer now animates independently with `requestAnimationFrame`, interpolating
+between video-clock samples instead of jumping every 250ms (TV) / 100ms (phone).
+Small native-clock jitter is corrected gradually; pause, buffering, seek, hidden
+pages and stop suspend/resynchronize the animation. Native AVPlay is not queried
+on each animation frame. Text bounds are measured once per new scrolling comment,
+layer width is cached until resize, and transforms use compositor-friendly 3D
+translation with inexpensive non-blurred text shadows. Only a bounded number of
+comments are mounted at once, regardless of the full episode's comment count.
+
+The renderer follows the device's available animation cadence; 60 simulated
+frames in tests do not establish real Samsung hardware FPS. A lost clock feed
+is bounded to one second of extrapolation. No backend restart or new danmaku
+acquisition is needed for this frontend-only update. Existing 0.6.1 widgets must
+be re-signed/reinstalled to receive it; updating server files alone only updates
+the phone/browser preview.
+
 **macOS automatic acquisition now uses the unmodified official Kazumi 2.4.2 app.**
 After TV/phone playback starts, the gateway checks verified comment caches first.
 For a new episode it launches the official app, matches public Bangumi names and

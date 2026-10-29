@@ -23,7 +23,7 @@
   }
   var server = '';
   var current = null;
-  var preparing = false;
+  var preparing = false, buffering = false;
   var playGeneration = 0;
   var refreshGeneration = 0;
   var subtitlesOn = true;
@@ -78,7 +78,7 @@
     receiverBusy = true;
     var base = server;
     if (!receiverSession) {
-      tvPost('/api/tv/register', { clientId: receiverClient, bootId: receiverBoot, version: '0.6.1' }, function (error, result) {
+      tvPost('/api/tv/register', { clientId: receiverClient, bootId: receiverBoot, version: '0.6.2' }, function (error, result) {
         receiverBusy = false;
         if (base !== server) return;
         if (error || !result.session) { receiverLabel(error ? error.message : 'Phone controller needs the updated Mac server.'); return; }
@@ -378,11 +378,11 @@
     try { return nativePlayer ? nativePlayer.getState() !== 'PLAYING' : video.paused; } catch (e) { return true; }
   }
   function updateTime() {
-    var now = position(), length = duration();
-    if (danmaku) danmaku.tick(now, paused());
+    var now = position(), length = duration(), isPaused = paused();
+    if (danmaku) danmaku.tick(now, isPaused || preparing || buffering || seeking || !!remoteError || document.hidden);
     $('playback-time').textContent = timeLabel(now) + ' / ' + timeLabel(length);
     $('progress-fill').style.width = isFinite(length) && length > 0 ? Math.min(100, now / length * 100) + '%' : '0%';
-    $('toggle-play').textContent = paused() ? 'Play' : 'Pause';
+    $('toggle-play').textContent = isPaused ? 'Play' : 'Pause';
     var text = '';
     if (subtitlesOn) cues.forEach(function (cue) { if (now >= cue.start && now < cue.end) text += (text ? '\n' : '') + cue.text; });
     if (cues.length || !nativePlayer) $('subtitle').textContent = text;
@@ -409,12 +409,16 @@
       common.setScreenSaver(value, function () {}, function () {});
     } catch (e) {}
   }
-  function failPlayback(text) { remoteError = text; preparing = false; screenSaver(true); message(text + ' · Press Back to return to the library.'); revealControls(true); }
+  function failPlayback(text) {
+    remoteError = text; preparing = false;
+    if (danmaku) danmaku.tick(position(), true);
+    screenSaver(true); message(text + ' · Press Back to return to the library.'); revealControls(true);
+  }
   function stopPlayback(reason) {
     if (remotePlaybackId) remoteTerminal = { playbackId: remotePlaybackId, reason: reason === 'ended' ? 'ended' : 'stopped' };
     remotePlaybackId = null; remoteError = '';
     playGeneration++;
-    current = null; preparing = false; cues = []; seeking = false;
+    current = null; preparing = false; buffering = false; cues = []; seeking = false;
     seekTicket++; clearTimeout(seekTimer); remoteSeek = null; seekSnapshot = null;
     clearInterval(danmakuTimer); danmakuVersion = ''; danmakuBusy = false;
     if (danmaku) danmaku.clear();
@@ -447,9 +451,9 @@
         nativePlayer.setDisplayRect(0, 0, 1920, 1080);
         nativePlayer.setDisplayMethod('PLAYER_DISPLAY_MODE_LETTER_BOX');
         nativePlayer.setListener({
-          onbufferingstart: function () { if (generation === playGeneration) message('Buffering…'); },
+          onbufferingstart: function () { if (generation === playGeneration) { buffering = true; message('Buffering…'); updateTime(); } },
           onbufferingprogress: function (percent) { if (generation === playGeneration) message('Buffering… ' + percent + '%'); },
-          onbufferingcomplete: function () { if (generation === playGeneration) message(''); },
+          onbufferingcomplete: function () { if (generation === playGeneration) { buffering = false; message(''); updateTime(); } },
           oncurrentplaytime: function () { if (generation === playGeneration) updateTime(); },
           onstreamcompleted: function () { if (generation === playGeneration) stopPlayback('ended'); },
           onerror: function (error) { if (generation === playGeneration) failPlayback('TV player error: ' + error); },
@@ -466,7 +470,7 @@
           if (generation !== playGeneration) return;
           try {
             if (nativePlayer.setSilentSubtitle) nativePlayer.setSilentSubtitle(true);
-            nativePlayer.play(); screenSaver(false); preparing = false; message(''); revealControls(false);
+            nativePlayer.play(); screenSaver(false); preparing = false; message(''); updateTime(); revealControls(false);
           }
           catch (error) { failPlayback(error.message); }
         }, function (error) { if (generation === playGeneration) failPlayback('Cannot prepare this video: ' + (error.message || error)); });
@@ -509,6 +513,7 @@
       if (!valid()) return;
       clearTimeout(seekTimer); seeking = false; seekSnapshot = null;
       remoteSeek = { state: error ? 'error' : 'done', from: from, target: target, actual: position(), error: error || '' };
+      if (danmaku) danmaku.tick(position(), paused() || buffering || !!remoteError, true);
       message(error || ''); updateTime(); revealControls(false);
     }
     function run(absolute) {
@@ -548,6 +553,7 @@
     try {
       if (nativePlayer) {
         seeking = true; message('Seeking…');
+        if (danmaku) danmaku.tick(from, true);
         run(typeof nativePlayer.jumpForward !== 'function' || typeof nativePlayer.jumpBackward !== 'function');
       } else { video.currentTime = target / 1000; finish(); }
       revealControls(false);
@@ -649,14 +655,17 @@
     $('danmaku-status').textContent = danmakuLocalEnabled ? '弹幕已显示，正在同步…' : '本电视已隐藏弹幕。';
     loadDanmaku();
   };
-  video.addEventListener('playing', function () { if (current && !nativePlayer) { preparing = false; message(''); revealControls(false); } });
-  video.addEventListener('waiting', function () { if (current && !nativePlayer) message('Buffering…'); });
+  video.addEventListener('playing', function () { if (current && !nativePlayer) { preparing = false; buffering = false; message(''); updateTime(); revealControls(false); } });
+  video.addEventListener('waiting', function () { if (current && !nativePlayer) { buffering = true; message('Buffering…'); updateTime(); } });
+  video.addEventListener('pause', function () { if (current && !nativePlayer) updateTime(); });
+  video.addEventListener('seeking', function () { if (current && !nativePlayer) { seeking = true; if (danmaku) danmaku.tick(position(), true, true); } });
+  video.addEventListener('seeked', function () { if (current && !nativePlayer) { seeking = false; if (danmaku) danmaku.tick(position(), paused() || buffering, true); } });
   video.addEventListener('error', function () { if (current && !nativePlayer) failPlayback('Browser cannot play this source. Use a supported MP4 or test it in the installed TV app.'); });
   video.addEventListener('ended', function () { if (current && !nativePlayer) stopPlayback('ended'); });
   document.addEventListener('visibilitychange', function () {
     if (document.hidden && current && !preparing && !paused()) togglePlay(false);
   });
-  window.addEventListener('beforeunload', function () { screenSaver(true); if (nativePlayer) { try { nativePlayer.close(); } catch (e) {} } });
+  window.addEventListener('beforeunload', function () { if (danmaku) danmaku.clear(); screenSaver(true); if (nativePlayer) { try { nativePlayer.close(); } catch (e) {} } });
   if (window.tizen && window.tizen.tvinputdevice) {
     ['MediaPlay', 'MediaPause', 'MediaPlayPause', 'MediaStop', 'MediaRewind', 'MediaFastForward'].forEach(function (name) {
       try { window.tizen.tvinputdevice.registerKey(name); } catch (e) {}

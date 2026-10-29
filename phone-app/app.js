@@ -4,9 +4,21 @@
   let state = null, show = null, searchGeneration = 0, requestGeneration = 0;
   let stateBusy = false, noticeTimer, queueSignature = '';
   let recentSignature = '', recentBusy = false;
-  let mode = 'remote', phoneItem = null, hls = null, phoneGeneration = 0, phoneDanmakuVersion = '', phoneDanmakuBusy = false;
+  let mode = 'remote', phoneItem = null, hls = null, phoneGeneration = 0, phoneDanmakuVersion = '', phoneDanmakuBusy = false, phoneBuffering = true;
   const phoneVideo = $('phone-video');
   const phoneDanmaku = window.BangumiDanmaku ? new window.BangumiDanmaku($('phone-danmaku')) : null;
+  function syncPhoneDanmaku(discontinuity = false) {
+    if (!phoneDanmaku || !phoneItem) return;
+    phoneDanmaku.tick(phoneVideo.currentTime * 1000, phoneVideo.paused || phoneVideo.seeking ||
+      phoneBuffering || phoneVideo.readyState < 3 || mode !== 'player' || document.hidden, discontinuity);
+  }
+  phoneVideo.addEventListener('pause', () => syncPhoneDanmaku());
+  phoneVideo.addEventListener('ended', () => syncPhoneDanmaku());
+  phoneVideo.addEventListener('waiting', () => { phoneBuffering = true; syncPhoneDanmaku(); });
+  phoneVideo.addEventListener('seeking', () => { phoneBuffering = true; syncPhoneDanmaku(true); });
+  phoneVideo.addEventListener('seeked', () => { phoneBuffering = phoneVideo.readyState < 3; syncPhoneDanmaku(true); });
+  phoneVideo.addEventListener('timeupdate', () => syncPhoneDanmaku());
+  document.addEventListener('visibilitychange', () => syncPhoneDanmaku(true));
   function showAutoDanmaku(data, target) {
     const message = data?.message || '播放后自动获取弹幕，视频不会因此暂停。';
     $(target === 'phone' ? 'phone-danmaku-state' : 'tv-danmaku-state').textContent = message;
@@ -19,12 +31,13 @@
     $('mode-remote').classList.toggle('selected', value === 'remote'); $('mode-player').classList.toggle('selected', value === 'player');
     if (value === 'remote') { if (!phoneItem) phoneGeneration++; phoneVideo.pause(); if (hls) hls.stopLoad(); }
     else if (hls) hls.startLoad(-1);
+    syncPhoneDanmaku();
     if (show && changed) renderEpisodes();
   }
   function stopPhone() {
     if (phoneItem?.id) api('/api/controller/danmaku', { method: 'POST',
       body: JSON.stringify({ action: 'auto-stop', streamId: phoneItem.id }) }).catch(() => {});
-    phoneGeneration++; phoneItem = null; phoneDanmakuVersion = '';
+    phoneGeneration++; phoneItem = null; phoneDanmakuVersion = ''; phoneBuffering = true;
     if (hls) { hls.destroy(); hls = null; }
     phoneVideo.pause(); phoneVideo.removeAttribute('src'); phoneVideo.load();
     if (phoneDanmaku) phoneDanmaku.clear();
@@ -55,6 +68,7 @@
     let recorded = false;
     phoneVideo.onplaying = () => {
       if (generation !== phoneGeneration) return;
+      phoneBuffering = false; syncPhoneDanmaku();
       $('phone-status').textContent = '正在手机播放 · 原始画质';
       if (!recorded && /^anime-[a-f0-9]{32}$/.test(item.id || '')) {
         recorded = true;
@@ -62,7 +76,7 @@
           .then(result => renderRecent(result.items)).catch(() => { recorded = false; });
       }
     };
-    phoneVideo.onerror = () => { if (generation === phoneGeneration) $('phone-status').textContent = '手机无法解码或来源读取失败，请换一条播放线路。'; };
+    phoneVideo.onerror = () => { if (generation === phoneGeneration) { phoneBuffering = true; syncPhoneDanmaku(); $('phone-status').textContent = '手机无法解码或来源读取失败，请换一条播放线路。'; } };
     const play = () => {
       if (generation !== phoneGeneration || mode !== 'player') return;
       const promise = phoneVideo.play();
@@ -73,7 +87,7 @@
       hls = new window.Hls({ maxBufferLength: 30 });
       hls.on(window.Hls.Events.MANIFEST_PARSED, play);
       hls.on(window.Hls.Events.ERROR, (_event, data) => {
-        if (generation === phoneGeneration && data.fatal) $('phone-status').textContent = 'HLS playback failed: ' + data.details + '. Try another playback source.';
+        if (generation === phoneGeneration && data.fatal) { phoneBuffering = true; syncPhoneDanmaku(); $('phone-status').textContent = 'HLS playback failed: ' + data.details + '. Try another playback source.'; }
       });
       hls.loadSource(item.streamPath); hls.attachMedia(phoneVideo);
     } else { phoneVideo.src = item.streamPath; play(); }
@@ -98,7 +112,8 @@
     try { if (!state?.media) throw new Error('当前没有可继续的视频，请在下方选集。'); await startPhone(state.media, state.tv.position); }
     catch (error) { notice(error.message, true); }
   };
-  setInterval(() => { if (phoneDanmaku && phoneItem) phoneDanmaku.tick(phoneVideo.currentTime * 1000, phoneVideo.paused); }, 100);
+  // Clock samples only; the shared renderer owns the independent RAF animation.
+  setInterval(syncPhoneDanmaku, 250);
   setInterval(refreshPhoneDanmaku, 5000);
   function notice(text, error = false) {
     clearTimeout(noticeTimer); $('notice').textContent = text; $('notice').classList.toggle('error', error);

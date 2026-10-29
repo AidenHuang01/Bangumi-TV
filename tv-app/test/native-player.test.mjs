@@ -100,6 +100,27 @@ test('TV loads late danmaku without reopening AVPlay and supports its own visibi
   assert.equal(app.danmakuCalls.filter(call => call[0] === 'configure').at(-1)[1].enabled, true);
 });
 
+test('native buffering and pause freeze the independent danmaku clock immediately', () => {
+  const app = setup(true, true); app.start(); app.ready();
+  assert.equal(app.danmakuCalls.filter(call => call[0] === 'tick').at(-1)[2], false);
+  app.listener.onbufferingstart();
+  assert.equal(app.danmakuCalls.filter(call => call[0] === 'tick').at(-1)[2], true);
+  app.poll(); assert.equal(app.danmakuCalls.filter(call => call[0] === 'tick').at(-1)[2], true);
+  app.listener.onbufferingcomplete();
+  assert.equal(app.danmakuCalls.filter(call => call[0] === 'tick').at(-1)[2], false);
+  app.key(19); assert.equal(app.danmakuCalls.filter(call => call[0] === 'tick').at(-1)[2], true);
+  app.key(415); assert.equal(app.danmakuCalls.filter(call => call[0] === 'tick').at(-1)[2], false);
+  app.key(10009); assert.equal(app.danmakuCalls.at(-1)[0], 'clear');
+});
+
+test('native seek freezes glyphs before the operation and explicitly resynchronizes on completion', () => {
+  const app = setup(true, true); app.start(); app.ready();
+  app.key(417);
+  assert.ok(app.danmakuCalls.some(call => call[0] === 'tick' && call[1] === 0 && call[2] === true));
+  for (const callback of [...app.timeouts.values()]) callback();
+  assert.ok(app.danmakuCalls.some(call => call[0] === 'tick' && call[1] === 10000 && call[3] === true));
+});
+
 test('Samsung playback uses AVPlay at its documented 1920×1080 coordinate scale', () => {
   const app = setup(); app.start(); app.ready();
   assert.ok(app.calls.some(call => call[0] === 'open' && call[1] === 'http://192.168.1.20:8787/stream/test'));

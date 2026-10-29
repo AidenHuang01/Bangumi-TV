@@ -6,10 +6,10 @@ import { createController } from '../../server/lib/controller.mjs';
 
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const code = await readFile(new URL('../app.js', import.meta.url), 'utf8');
-function setup(t, online = true) {
+function setup(t, online = true, animate = false) {
   const dom = new JSDOM(html, { url: 'http://127.0.0.1:8787/remote/', runScripts: 'outside-only' });
   t.after(() => dom.window.close());
-  const { window } = dom, requests = [], intervals = [];
+  const { window } = dom, requests = [], intervals = [], danmakuCalls = [];
   window.setInterval = callback => intervals.push(callback);
   const discovery = { selection: id => ({ title: '葬送的芙莉莲 · ' + id }),
     async resolveSelection(episode) { return { item: { title: episode.title, streamPath: '/stream/test' } }; } };
@@ -19,6 +19,10 @@ function setup(t, online = true) {
   window.HTMLMediaElement.prototype.play = async function () { this.dataset.played = 'yes'; };
   window.HTMLMediaElement.prototype.pause = function () { this.dataset.paused = 'yes'; };
   window.HTMLMediaElement.prototype.load = function () {};
+  if (animate) window.BangumiDanmaku = function () {
+    this.tick = (...args) => danmakuCalls.push(['tick', ...args]);
+    this.clear = () => danmakuCalls.push(['clear']); this.configure = () => {}; this.setData = () => {};
+  };
   window.fetch = async (path, options = {}) => {
     requests.push({ path, options }); let result, status = 200;
     try {
@@ -39,9 +43,28 @@ function setup(t, online = true) {
     await settle(); await $('search-form').onsubmit({ preventDefault() {} });
     await $('results').querySelector('button').onclick();
   }
-  return { window, $, controller, requests, settle, episodes,
+  return { window, $, controller, requests, danmakuCalls, settle, episodes,
     poll: async () => { for (const callback of intervals) await callback(); await settle(); } };
 }
+
+test('phone animation clock freezes on waiting, resynchronizes seek and stops in remote mode', async t => {
+  const app = setup(t, true, true); await app.episodes(); app.$('mode-player').click();
+  await app.$('episodes').children[0].querySelector('button').onclick();
+  const video = app.$('phone-video');
+  Object.defineProperty(app.window.document, 'hidden', { get: () => false });
+  Object.defineProperty(video, 'paused', { get: () => false });
+  Object.defineProperty(video, 'readyState', { get: () => 4 });
+  video.onplaying();
+  assert.equal(app.danmakuCalls.at(-1)[2], false);
+  video.dispatchEvent(new app.window.Event('waiting')); assert.equal(app.danmakuCalls.at(-1)[2], true);
+  video.onplaying(); assert.equal(app.danmakuCalls.at(-1)[2], false);
+  video.dispatchEvent(new app.window.Event('seeking'));
+  assert.equal(app.danmakuCalls.at(-1)[2], true); assert.equal(app.danmakuCalls.at(-1)[3], true);
+  video.dispatchEvent(new app.window.Event('seeked'));
+  assert.equal(app.danmakuCalls.at(-1)[2], false); assert.equal(app.danmakuCalls.at(-1)[3], true);
+  app.$('mode-remote').click(); assert.equal(app.danmakuCalls.at(-1)[2], true);
+  app.$('phone-stop').click(); assert.equal(app.danmakuCalls.at(-1)[0], 'clear');
+});
 
 test('phone remote shows automatic TV status outside settings and retry uses the active TV stream', async t => {
   const app = setup(t); await app.settle();

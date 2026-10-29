@@ -70,12 +70,13 @@ test('HTTP phone selection and TV comment delivery share the native Kazumi bridg
 });
 
 test('renderer uses video time, freezes on pause, clears on seek and escapes HTML', async () => {
-  const dom = new JSDOM('<div id="layer"></div>', { runScripts: 'outside-only' });
+  const dom = new JSDOM('<div id="layer"></div>', { runScripts: 'outside-only', pretendToBeVisual: true });
   dom.window.eval(await readFile(new URL('../../tv-app/danmaku.js', import.meta.url), 'utf8'));
   const layer = dom.window.document.getElementById('layer');
   const renderer = new dom.window.BangumiDanmaku(layer);
   renderer.setData([{ time: 1, text: '<img src=x>', mode: 1, color: '#ffffff' }]);
   renderer.tick(1000, false); renderer.tick(1200, false);
+  renderer.tick(1200, true);
   const transform = layer.firstChild.style.transform;
   renderer.tick(1200, true);
   assert.equal(layer.firstChild.style.transform, transform);
