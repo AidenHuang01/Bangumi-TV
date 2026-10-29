@@ -274,6 +274,20 @@ is unusable. Use `--core-port` / `--port` if these ports are occupied.
 
 ### Danmaku framework
 
+#### Asynchronous delivery and controls (TV 0.6.1)
+
+The phone shows comment-loading status and offers retry, visibility and time-offset
+controls. The TV can receive comments after video playback starts without reopening
+the video, and has its own show/hide control. Episode changes cancel stale jobs;
+only caches with verified acquisition provenance are eligible for automatic loading.
+Older caches remain available through explicit manual selection.
+
+**Background acquisition of new comments without Mac video playback is not yet
+implemented.** The experimental desktop UI acquisition code is disconnected from
+the production server because it opens a second video player. Do not enable that
+workflow as a substitute for a comment-only bridge. No official credentials are
+extracted or included in this project.
+
 #### Forward comments from the official Mac Kazumi app — no gateway API keys
 
 This path runs the **official desktop release**, not our rebuilt core, to obtain
@@ -288,8 +302,8 @@ HTTPS interception or screen sharing is involved. TV playback uses its existing
 clock-synchronized overlay. This is a download-cache bridge, **not a live memory
 hook**: ordinary desktop streaming alone does not create a cache. Cache labels
 come from the official app's Bangumi association; mismatched seasons/source
-choices in Kazumi can still produce the wrong comments, so no automatic attach
-is attempted.
+choices in Kazumi can still produce the wrong comments, so unverified caches are
+never attached automatically.
 
 The server reads only bounded `show/episode/danmaku.json` files in the official
 macOS sandbox download directory. Set `KAZUMI_CACHE_DIR` in the server environment
@@ -326,7 +340,7 @@ verification awaits those credentials. Without a rebuild, server-only credential
 can still use the existing direct API adapter. The bridge is not a remote control
 interface into an already-installed official Kazumi app. The separate cache
 bridge above reads that app's downloaded comment files without credentials;
-no automatic cache watcher is installed. See https://doc.dandanplay.com/open/.
+it does not provide standalone background acquisition. See https://doc.dandanplay.com/open/.
 
 ### Daily source reports
 

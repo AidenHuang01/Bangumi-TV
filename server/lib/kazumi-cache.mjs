@@ -18,14 +18,17 @@ export function createKazumiCache({ root = process.env.KAZUMI_CACHE_DIR || defau
   const titles = new Map();
   async function title(id) {
     if (titles.has(id)) return titles.get(id);
-    let value = 'Bangumi #' + id;
+    let value = { title: 'Bangumi #' + id, aliases: [] };
     try {
       const result = await upstream('https://api.bgm.tv/v0/subjects/' + id, {
         signal: AbortSignal.timeout(4000), source: { userAgent: 'Forge-TV (https://github.com/forgetech-dev/Forge-TV)' }
       });
       if (result.status !== 200) { result.stream.destroy(); throw new Error('Metadata unavailable'); }
       const data = JSON.parse((await readBody(result, 1024 * 1024)).toString());
-      if (typeof (data.name_cn || data.name) === 'string') value = (data.name_cn || data.name).slice(0, 200);
+      if (typeof (data.name_cn || data.name) === 'string') value = {
+        title: (data.name_cn || data.name).slice(0, 200),
+        aliases: [data.name_cn, data.name].filter(name => typeof name === 'string' && name).map(name => name.slice(0, 200))
+      };
     } catch { /* Metadata does not gate local comment import. */ }
     titles.set(id, value);
     while (titles.size > 100) titles.delete(titles.keys().next().value);
@@ -59,7 +62,7 @@ export function createKazumiCache({ root = process.env.KAZUMI_CACHE_DIR || defau
     for (const id of [...new Set(recent.map(row => row.bangumiId))].slice(0, 10)) await title(id);
     entries = new Map(recent.map(row => [row.id, row]));
     return { available: true, items: recent.map(({ file, base, ...row }) => ({ ...row,
-      title: titles.get(row.bangumiId) || 'Bangumi #' + row.bangumiId })),
+      ...(titles.get(row.bangumiId) || { title: 'Bangumi #' + row.bangumiId, aliases: [] }) })),
       message: recent.length ? '仅转发官方 Kazumi 已缓存的弹幕；请核对番剧和集数后选择。' : '还没有弹幕文件。请在官方 Kazumi 下载一集并开启“缓存弹幕”。' };
   }
   return {
@@ -83,7 +86,7 @@ export function createKazumiCache({ root = process.env.KAZUMI_CACHE_DIR || defau
             size += result.bytesRead;
           }
           if (size > 4 * 1024 * 1024) throw new Error('Cache too large');
-          return { content: buffer.toString('utf8', 0, size), source: 'Kazumi 官方缓存 · ' + (titles.get(entry.bangumiId) || entry.bangumiId) + ' · 第' + entry.episode + '集' };
+          return { content: buffer.toString('utf8', 0, size), source: 'Kazumi 官方缓存 · ' + (titles.get(entry.bangumiId)?.title || entry.bangumiId) + ' · 第' + entry.episode + '集' };
         } finally { await handle.close(); }
       } catch { throw fail('Kazumi cache is unavailable or still being written. Refresh and try again.'); }
     }

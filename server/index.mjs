@@ -2,6 +2,9 @@ import { networkInterfaces } from 'node:os';
 import { readFile } from 'node:fs/promises';
 import { createDanmaku } from './lib/danmaku.mjs';
 import { createRecentHistory } from './lib/recent-history.mjs';
+import { createKazumiCache } from './lib/kazumi-cache.mjs';
+import { createVerifiedKazumiCache } from './lib/verified-kazumi-cache.mjs';
+import { fileURLToPath } from 'node:url';
 import { createApp } from './app.mjs';
 import { createDiscovery, loadRules } from './lib/discovery.mjs';
 import { startKazumiCore } from './lib/kazumi-client.mjs';
@@ -16,7 +19,14 @@ const discovery = createDiscovery({ rules, core });
 let settings = {};
 try { settings = JSON.parse(await readFile(new URL('./settings.local.json', import.meta.url), 'utf8')); }
 catch (error) { if (error.code !== 'ENOENT') { await discovery.close(); throw new Error('Invalid server/settings.local.json'); } }
-const app = createApp({ mediaDir: process.env.MEDIA_DIR, sourcesFile: process.env.SOURCES_FILE, discovery,
+const kazumiCache = createKazumiCache();
+const automaticCache = createVerifiedKazumiCache(kazumiCache, {
+  file: fileURLToPath(new URL('./data/kazumi-auto-cache.json', import.meta.url))
+});
+const app = createApp({ mediaDir: process.env.MEDIA_DIR, sourcesFile: process.env.SOURCES_FILE, discovery, kazumiCache,
+  automaticCache,
+  // Desktop UI acquisition starts a second video player. It is intentionally
+  // disconnected: this Mac must only bridge comments, not play the episode.
   danmaku: createDanmaku({ ...settings.dandan, core, coreConfigured: core ? (await core.health()).danmaku?.configured === true : false }),
   recentHistory: createRecentHistory() });
 app.on('error', error => { console.error(error.message); process.exitCode = 1; discovery.close(); });

@@ -7,10 +7,12 @@ const source = await readFile(new URL('../app.js', import.meta.url), 'utf8');
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 
 // Exercise the Samsung branch without assuming an emulator equals real TV hardware.
-function setup(receiver = false) {
+function setup(receiver = false, comments = false) {
   const elements = {}, handlers = {}, timeouts = new Map(), intervals = new Map(), calls = [];
   let timerId = 0, state = 'NONE', now = 0, listener, prepared;
   const commands = [], reports = [];
+  const danmakuCalls = [];
+  let danmakuResponse = { count: 0, comments: [], enabled: true, version: '1', automatic: { message: '正在获取官方弹幕，视频继续播放…' } };
   class Element {
     constructor(id) {
       this.id = id; this.children = []; this.style = {}; this.textContent = ''; this.value = '';
@@ -57,7 +59,9 @@ function setup(receiver = false) {
       if (receiver && this.url.endsWith('/api/tv/register')) this.responseText = JSON.stringify({ session: 'session', epoch: 'epoch' });
       else if (receiver && this.url.endsWith('/api/tv/poll')) {
         reports.push(JSON.parse(body)); this.responseText = JSON.stringify({ epoch: 'epoch', commands });
-      } else this.responseText = JSON.stringify({ items: [{ title: 'Test episode', kind: 'local', format: 'mp4', description: 'Original file', streamPath: '/stream/test' }] });
+      } else if (this.url.includes('/api/danmaku/')) this.responseText = JSON.stringify(danmakuResponse);
+      else this.responseText = JSON.stringify({ items: [{ title: 'Test episode', kind: 'local', format: 'mp4', description: 'Original file', streamPath: '/stream/test',
+        ...(comments ? { id: 'anime-' + 'a'.repeat(32), danmakuPath: '/api/danmaku/anime-' + 'a'.repeat(32) } : {}) }] });
       this.onload();
     }
   }
@@ -65,16 +69,36 @@ function setup(receiver = false) {
     application: { getCurrentApplication: () => ({ exit: () => calls.push(['exit']) }) } };
   const window = { webapis: { avplay }, tizen, BANGUMI_DEFAULT_SERVER: 'http://192.168.1.20:8787',
     location: { protocol: 'file:' }, addEventListener: () => {} };
+  if (comments) window.BangumiDanmaku = function () {
+    this.configure = settings => danmakuCalls.push(['configure', settings]);
+    this.setData = value => danmakuCalls.push(['data', value]);
+    this.clear = () => danmakuCalls.push(['clear']); this.tick = (...args) => danmakuCalls.push(['tick', ...args]);
+  };
   const context = { window, document, localStorage: { getItem: () => null, setItem: () => {} }, XMLHttpRequest: XHR,
     setTimeout: callback => { timeouts.set(++timerId, callback); return timerId; }, clearTimeout: id => timeouts.delete(id),
     setInterval: callback => { intervals.set(++timerId, callback); return timerId; }, clearInterval: id => intervals.delete(id) };
   vm.runInNewContext(source, context);
   function key(code) { handlers.keydown({ keyCode: code, preventDefault() {} }); }
-  return { elements, calls, key, timeouts, intervals, commands, reports, avplay,
+  return { elements, calls, key, timeouts, intervals, commands, reports, avplay, danmakuCalls,
+    comments: value => { danmakuResponse = value; },
     poll: () => { for (const callback of [...intervals.values()]) callback(); },
     start: () => elements.cards.children[0].onclick(),
     ready: () => prepared.success(), get prepared() { return prepared; }, get listener() { return listener; } };
 }
+
+test('TV loads late danmaku without reopening AVPlay and supports its own visibility control', () => {
+  const app = setup(true, true); app.start(); app.ready();
+  assert.match(app.elements['danmaku-status'].textContent, /正在获取/);
+  const opens = app.calls.filter(call => call[0] === 'open').length;
+  app.comments({ enabled: true, count: 2000, comments: [{ time: 1, text: 'test' }], version: '2' }); app.poll();
+  assert.match(app.elements['danmaku-status'].textContent, /2000/);
+  assert.equal(app.calls.filter(call => call[0] === 'open').length, opens);
+  app.elements['toggle-danmaku'].onclick();
+  assert.match(app.elements['toggle-danmaku'].textContent, /隐藏/);
+  assert.equal(app.danmakuCalls.filter(call => call[0] === 'configure').at(-1)[1].enabled, false);
+  app.elements['toggle-danmaku'].onclick();
+  assert.equal(app.danmakuCalls.filter(call => call[0] === 'configure').at(-1)[1].enabled, true);
+});
 
 test('Samsung playback uses AVPlay at its documented 1920×1080 coordinate scale', () => {
   const app = setup(); app.start(); app.ready();

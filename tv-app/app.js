@@ -6,6 +6,7 @@
   var video = $('browser-player');
   var danmaku = window.BangumiDanmaku ? new window.BangumiDanmaku($('danmaku-layer')) : null;
   var danmakuTimer, danmakuVersion = '', danmakuBusy = false;
+  var danmakuLocalEnabled = true, danmakuSettings = { enabled: true };
   function loadDanmaku() {
     if (!danmaku || !current || !current.danmakuPath || danmakuBusy) return;
     var generation = playGeneration;
@@ -14,8 +15,10 @@
       danmakuBusy = false;
       if (error || generation !== playGeneration) return;
       if (!data.unchanged) danmaku.setData(data.comments);
-      danmaku.configure(data); danmakuVersion = data.version;
-      $('danmaku-status').textContent = data.count ? 'Danmaku: ' + data.count : 'Danmaku: import from phone or configure API keys';
+      danmakuSettings = data;
+      danmaku.configure({ enabled: data.enabled !== false && danmakuLocalEnabled, offset: data.offset, opacity: data.opacity }); danmakuVersion = data.version;
+      $('danmaku-status').textContent = data.enabled === false ? '弹幕已在手机端关闭。' : !danmakuLocalEnabled ? '本电视已隐藏弹幕。' :
+        data.count ? '弹幕已加载：' + data.count + ' 条 · 暂停、快进自动同步' : data.automatic && data.automatic.message || '正在等待官方 Kazumi 弹幕，视频继续播放…';
     });
   }
   var server = '';
@@ -75,7 +78,7 @@
     receiverBusy = true;
     var base = server;
     if (!receiverSession) {
-      tvPost('/api/tv/register', { clientId: receiverClient, bootId: receiverBoot, version: '0.6.0' }, function (error, result) {
+      tvPost('/api/tv/register', { clientId: receiverClient, bootId: receiverBoot, version: '0.6.1' }, function (error, result) {
         receiverBusy = false;
         if (base !== server) return;
         if (error || !result.session) { receiverLabel(error ? error.message : 'Phone controller needs the updated Mac server.'); return; }
@@ -637,6 +640,14 @@
     subtitlesOn = !subtitlesOn; $('subtitle').textContent = '';
     $('toggle-subtitles').textContent = 'Subtitles: ' + (subtitlesOn ? 'on' : 'off');
     revealControls(false);
+  };
+  $('toggle-danmaku').onclick = function () {
+    danmakuLocalEnabled = !danmakuLocalEnabled;
+    $('toggle-danmaku').textContent = '弹幕：' + (danmakuLocalEnabled ? '显示' : '隐藏');
+    if (danmaku) danmaku.configure({ enabled: danmakuSettings.enabled !== false && danmakuLocalEnabled,
+      offset: danmakuSettings.offset, opacity: danmakuSettings.opacity });
+    $('danmaku-status').textContent = danmakuLocalEnabled ? '弹幕已显示，正在同步…' : '本电视已隐藏弹幕。';
+    loadDanmaku();
   };
   video.addEventListener('playing', function () { if (current && !nativePlayer) { preparing = false; message(''); revealControls(false); } });
   video.addEventListener('waiting', function () { if (current && !nativePlayer) message('Buffering…'); });

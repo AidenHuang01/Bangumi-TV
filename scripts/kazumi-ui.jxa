@@ -1,0 +1,58 @@
+// Fixed, app-scoped Accessibility driver. Input is data, never executable code.
+// No credentials, databases, application binaries or network interception.
+function run(argv) {
+  const input = JSON.parse(argv[0] || '{}');
+  const events = Application('System Events');
+  const proc = events.applicationProcesses.whose({ bundleIdentifier: 'com.example.kazumi' })[0];
+  if (!proc.exists() || proc.windows.length !== 1) throw new Error('Kazumi must have exactly one window');
+  const win = proc.windows[0];
+  function get(fn, fallback) { try { return fn(); } catch (_) { return fallback; } }
+  if (['player-hover', 'player-panel', 'download-sheet'].indexOf(input.action) >= 0) {
+    // Two controls in the 2.4.2 video surface do not expose AX labels. Only
+    // permit these fixed window-relative targets in the verified wide layout.
+    const size = win.size(), pos = win.position();
+    const menu = proc.menuBars[0].menuBarItems.byName('Player');
+    if (size[0] !== 1280 || size[1] !== 860 || !menu.enabled())
+      throw new Error('Kazumi player layout changed; automatic clicks stopped');
+    proc.frontmost = true;
+    if (!proc.frontmost()) throw new Error('Kazumi is not frontmost');
+    const point = input.action === 'download-sheet' ? [1252, 210] : [1210, 834];
+    // System Events' AX click cannot press Flutter's texture surface. Use
+    // AppleScript/JXA's system bridge for these app-scoped mouse events only.
+    ObjC.import('CoreGraphics');
+    const xy = { x: pos[0] + point[0], y: pos[1] + point[1] };
+    function post(type) { $.CGEventPost(0, $.CGEventCreateMouseEvent(null, type, xy, 0)); }
+    if (input.action === 'player-hover') post(5);
+    else { post(1); delay(0.05); post(2); }
+    delay(0.2); // Flush posted events before this short-lived script exits.
+    return JSON.stringify({ ok: true });
+  }
+  if (input.action === 'enable') {
+    proc.attributes.byName('AXEnhancedUserInterface').value = false;
+    proc.attributes.byName('AXEnhancedUserInterface').value = true;
+    return JSON.stringify({ ok: true });
+  }
+  const elements = win.entireContents();
+  const rows = elements.slice(0, 600).map((element, index) => ({ index,
+    role: get(() => element.role(), ''),
+    label: get(() => element.description(), '') || get(() => element.name(), '') || '',
+    value: get(() => element.value(), ''),
+    enabled: get(() => element.enabled(), true)
+  }));
+  if (input.action === 'snapshot') return JSON.stringify({ title: win.name(), rows });
+  if (input.action !== 'press' || typeof input.label !== 'string' || !input.label || input.label.length > 300)
+    throw new Error('Unsupported Kazumi UI action');
+  // Re-resolve labels every time. Stale indices / arbitrary coordinates forbidden.
+  let scoped = rows;
+  if (input.provider) {
+    const start = rows.findIndex(row => row.label.indexOf('来源规则：' + input.provider + '，') === 0);
+    if (start < 0) throw new Error('Provider is not visible');
+    const next = rows.findIndex((row, index) => index > start && row.label.indexOf('来源规则：') === 0);
+    scoped = rows.slice(start + 1, next < 0 ? undefined : next);
+  }
+  const matches = scoped.filter(row => row.label === input.label && (!input.role || row.role === input.role));
+  if (matches.length !== 1 || !matches[0].enabled) throw new Error('Kazumi control is missing, ambiguous or disabled');
+  proc.frontmost = true;
+  events.click(elements[matches[0].index]);
+  return JSON.stringify({ ok: true });
+}

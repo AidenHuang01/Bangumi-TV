@@ -9,7 +9,8 @@ const code = await readFile(new URL('../app.js', import.meta.url), 'utf8');
 function setup(t, online = true) {
   const dom = new JSDOM(html, { url: 'http://127.0.0.1:8787/remote/', runScripts: 'outside-only' });
   t.after(() => dom.window.close());
-  const { window } = dom, requests = [];
+  const { window } = dom, requests = [], intervals = [];
+  window.setInterval = callback => intervals.push(callback);
   const discovery = { selection: id => ({ title: '葬送的芙莉莲 · ' + id }),
     async resolveSelection(episode) { return { item: { title: episode.title, streamPath: '/stream/test' } }; } };
   const controller = createController({ discovery });
@@ -38,8 +39,30 @@ function setup(t, online = true) {
     await settle(); await $('search-form').onsubmit({ preventDefault() {} });
     await $('results').querySelector('button').onclick();
   }
-  return { window, $, controller, requests, settle, episodes };
+  return { window, $, controller, requests, settle, episodes,
+    poll: async () => { for (const callback of intervals) await callback(); await settle(); } };
 }
+
+test('phone remote shows automatic TV status outside settings and retry uses the active TV stream', async t => {
+  const app = setup(t); await app.settle();
+  const original = app.window.fetch, id = 'anime-' + 'e'.repeat(32);
+  app.window.fetch = async (url, options = {}) => {
+    if (url === '/api/controller/state') return { ok: true, json: async () => ({
+      tvOnline: true, revision: 999, phase: 'playing', queue: [], media: { id }, tv: { title: '命运石之门 · 第3集', status: 'playing' },
+      danmaku: { state: 'loaded', message: '已自动加载 2000 条弹幕' }
+    }) };
+    if (url === '/api/controller/danmaku' && options.method === 'POST') {
+      assert.deepEqual(JSON.parse(options.body), { action: 'auto-retry', streamId: id, client: 'tv' });
+      return { ok: true, json: async () => ({ state: 'acquiring', message: '正在重新获取弹幕' }) };
+    }
+    return original(url, options);
+  };
+  await app.poll();
+  assert.match(app.$('tv-danmaku-state').textContent, /2000/);
+  await app.$('danmaku-retry').onclick();
+  assert.match(app.$('tv-danmaku-state').textContent, /重新获取/);
+  assert.equal(app.$('danmaku-panel').open, false);
+});
 
 test('danmaku selects the full episode list rather than trusting truncated search episodes', async t => {
   const app = setup(t); await app.episodes(); app.$('mode-player').click();

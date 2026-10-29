@@ -12,6 +12,7 @@ import { createDiscovery, readBody } from './lib/discovery.mjs';
 import { createController } from './lib/controller.mjs';
 import { createDanmaku } from './lib/danmaku.mjs';
 import { createKazumiCache } from './lib/kazumi-cache.mjs';
+import { createAutoDanmaku } from './lib/auto-danmaku.mjs';
 import { createCovers } from './lib/covers.mjs';
 import { listReports, readReport } from './lib/reports.mjs';
 import { createTVCompatibility } from './lib/tv-compatibility.mjs';
@@ -38,6 +39,9 @@ export function createApp({
   discovery = createDiscovery({ upstream }),
   danmaku = createDanmaku(),
   kazumiCache = createKazumiCache(),
+  automaticCache = kazumiCache,
+  acquireKazumiDanmaku,
+  autoDanmakuOptions = {},
   recentHistory = createRecentHistory({ file: null }),
   tvCompatibilityOptions = {}
 } = {}) {
@@ -51,6 +55,7 @@ export function createApp({
   const controller = createController({ discovery, prepareTVItem: item => tvCompatibility.prepare(item),
     presentTVItem: item => tvCompatibility.present(item), onPlayback: stream => recentHistory.record(stream) });
   const covers = createCovers();
+  const automaticDanmaku = createAutoDanmaku({ ...autoDanmakuOptions, cache: automaticCache, danmaku, acquire: acquireKazumiDanmaku });
 
   async function body(req, limit = 32768) {
     if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) throw Object.assign(new Error('Use application/json'), { status: 415 });
@@ -184,8 +189,21 @@ export function createApp({
         }
         if (pathname === '/api/controller/danmaku' && req.method === 'POST') {
           const input = await body(req, 5 * 1024 * 1024);
-          if (input.action === 'settings') return json(res, 200, danmaku.settings(input));
+          if (input.action === 'settings') {
+            const settings = danmaku.settings(input);
+            if (!settings.enabled) automaticDanmaku.cancel();
+            return json(res, 200, settings);
+          }
+          if (input.action === 'auto-stop') {
+            if (!/^anime-[a-f0-9]{32}$/.test(input.streamId || '')) return json(res, 400, { error: 'Choose a playing video first.' });
+            automaticDanmaku.release('phone', input.streamId);
+            return json(res, 200, { stopped: true });
+          }
           if (!discovery.stream(input.streamId || '')) return json(res, 404, { error: 'Choose a playing video first.' });
+          if (input.action === 'auto-retry') {
+            const stream = { ...discovery.stream(input.streamId), id: input.streamId };
+            return json(res, 200, automaticDanmaku.retry(stream, input.client === 'phone' ? 'phone' : 'tv'));
+          }
           if (input.action === 'import') return json(res, 200, danmaku.import(input.streamId, input.content));
           if (input.action === 'kazumi-cache') {
             const cached = await kazumiCache.read(input.cacheId);
@@ -199,23 +217,39 @@ export function createApp({
           const input = await body(req);
           const played = /^anime-[a-f0-9]{32}$/.test(input.streamId || '') && discovery.stream(input.streamId);
           if (!played) return json(res, 404, { error: 'Video expired. Select an episode again.' });
+          automaticDanmaku.observe({ ...played, id: input.streamId }, 'phone');
           return json(res, 200, { items: await recentHistory.record(played) });
         }
         if (tv && req.method === 'POST') {
           const input = await body(req);
           if (pathname === '/api/tv/register') return json(res, 200, controller.register(input));
-          if (pathname === '/api/tv/poll') return json(res, 200, controller.poll(req.headers['x-bangumi-tv'], input));
+          if (pathname === '/api/tv/poll') {
+            const result = controller.poll(req.headers['x-bangumi-tv'], input);
+            const stream = discovery.stream(input.mediaId || '');
+            if (stream && ['playing', 'paused'].includes(input.status)) automaticDanmaku.observe({ ...stream, id: input.mediaId }, 'tv');
+            else if (['idle', 'error'].includes(input.status)) automaticDanmaku.release('tv');
+            return json(res, 200, result);
+          }
           return json(res, 404, { error: 'Not found' });
         }
-        if (pathname === '/api/controller/state' && req.method === 'GET') return json(res, 200, controller.state());
-        if (pathname === '/api/controller/action' && req.method === 'POST') return json(res, 200, controller.mutate(await body(req)));
+        if (pathname === '/api/controller/state' && req.method === 'GET') {
+          const state = controller.state();
+          return json(res, 200, { ...state, danmaku: automaticDanmaku.status(state.media?.id) });
+        }
+        if (pathname === '/api/controller/action' && req.method === 'POST') {
+          const input = await body(req), result = controller.mutate(input);
+          if (input.action === 'stop') automaticDanmaku.release('tv');
+          return json(res, 200, result);
+        }
         return json(res, 405, { error: 'Unsupported controller method' });
       }
       if (!['GET', 'HEAD'].includes(req.method)) return json(res, 405, { error: 'GET and HEAD only outside controller endpoints' });
       if (/^\/api\/danmaku\/anime-[a-f0-9]{32}$/.test(pathname)) {
         const id = pathname.split('/')[3];
-        if (!discovery.stream(id)) return json(res, 404, { error: 'Video expired. Select an episode again.' });
-        return json(res, 200, danmaku.read(id, url.searchParams.get('version')));
+        const stream = discovery.stream(id);
+        if (!stream) return json(res, 404, { error: 'Video expired. Select an episode again.' });
+        const automatic = automaticDanmaku.poll({ ...stream, id }, url.searchParams.get('client') === 'phone' ? 'phone' : 'tv');
+        return json(res, 200, { ...danmaku.read(id, url.searchParams.get('version')), automatic });
       }
       if (pathname === '/shared/danmaku.js') return serveFile(req, res, await inside(tvDir, 'danmaku.js'), mimeTypes['.js']);
       if (pathname === '/vendor/hls.min.js') return serveFile(req, res, path.join(serverDir, '../node_modules/hls.js/dist/hls.min.js'), mimeTypes['.js']);
@@ -295,6 +329,7 @@ export function createApp({
   });
   server.requestTimeout = 0; // Long videos are expected; upstream inactivity has its own timeout.
   server.on('close', () => {
+    automaticDanmaku.close();
     controller.close();
     tvCompatibility.close().catch(error => console.error('TV cache shutdown: ' + error.message));
     discovery.close().catch(error => console.error('Resolver shutdown: ' + error.message));

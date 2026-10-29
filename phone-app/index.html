@@ -15,6 +15,7 @@
       <section class="panel now-playing" id="tv-controls">
         <div class="section-heading"><span class="eyebrow">ON YOUR TV</span><span class="hint">No pairing needed</span></div>
         <h2 id="now-title">Nothing playing</h2><p id="now-status" class="hint">Open the app on the TV to connect.</p>
+        <p id="tv-danmaku-state" class="hint" role="status">弹幕：播放后自动获取。</p>
         <div class="progress"><div id="progress-fill"></div></div><p id="playback-time" class="time">0:00 / 0:00</p>
         <div class="transport"><button id="seek-back" aria-label="Seek back 10 seconds">−10s</button><button id="toggle-play" class="primary">Pause</button><button id="seek-forward" aria-label="Seek forward 10 seconds">+10s</button><button id="stop">Stop</button></div>
       </section>
@@ -22,18 +23,21 @@
         <h2 id="phone-title">选择一集在手机播放</h2>
         <div class="phone-video-wrap"><video id="phone-video" controls playsinline preload="metadata"></video><div id="phone-danmaku" class="danmaku-layer" aria-hidden="true"></div></div>
         <p id="phone-status" class="hint" role="status">在下方搜索选集，或继续观看电视上的当前视频。</p>
+        <p id="phone-danmaku-state" class="hint" role="status">弹幕：播放后自动获取。</p>
         <button id="watch-current">在手机继续当前视频</button><button id="phone-stop">停止手机播放</button>
         <p class="hint">手机独立播放。切回遥控会暂停手机，电视播放不受影响。</p>
       </section>
       <details class="panel" id="danmaku-panel">
-        <summary>Danmaku / 弹幕</summary>
+        <summary>弹幕设置</summary>
         <p id="danmaku-status" class="hint">Loading danmaku settings…</p>
-        <label><input id="danmaku-enabled" type="checkbox" checked> Show danmaku</label>
-        <label for="danmaku-offset">Offset in seconds (positive = later)</label>
+        <p id="danmaku-auto-status" class="hint" role="status">播放后自动等待对应集弹幕，视频不会因此暂停。</p>
+        <button id="danmaku-retry">重新获取当前集弹幕</button>
+        <label><input id="danmaku-enabled" type="checkbox" checked> 显示弹幕（电视和手机）</label>
+        <label for="danmaku-offset">时间偏移／秒（正数表示延后）</label>
         <input id="danmaku-offset" type="number" min="-600" max="600" step="0.5" value="0">
-        <button id="danmaku-save">Apply settings</button>
+        <button id="danmaku-save">应用弹幕设置</button>
         <h3>官方 Kazumi 弹幕转发（无需 API 密钥）</h3>
-        <p class="hint">在 Mac 的官方 Kazumi 开启“下载设置 → 缓存弹幕”，下载需要的那一集。这里读取已生成的弹幕文件，不会读取凭证，也不需要把视频完整下载完。请核对番剧和集数。</p>
+        <p class="hint">后台直接获取新弹幕的桥接仍在开发，当前不会启动 Mac 播放器。可用下面的备用方式，手动选择官方 Kazumi 已缓存的弹幕；请核对番剧和集数。</p>
         <button id="kazumi-cache-refresh">读取 Mac 上的 Kazumi 弹幕</button>
         <p id="kazumi-cache-status" class="hint" role="status"></p>
         <div id="kazumi-cache-list"></div>

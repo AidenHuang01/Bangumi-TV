@@ -7,6 +7,11 @@
   let mode = 'remote', phoneItem = null, hls = null, phoneGeneration = 0, phoneDanmakuVersion = '', phoneDanmakuBusy = false;
   const phoneVideo = $('phone-video');
   const phoneDanmaku = window.BangumiDanmaku ? new window.BangumiDanmaku($('phone-danmaku')) : null;
+  function showAutoDanmaku(data, target) {
+    const message = data?.message || '播放后自动获取弹幕，视频不会因此暂停。';
+    $(target === 'phone' ? 'phone-danmaku-state' : 'tv-danmaku-state').textContent = message;
+    if ((target === 'phone') === (mode === 'player')) $('danmaku-auto-status').textContent = message;
+  }
   function setMode(value) {
     const changed = mode !== value;
     mode = value;
@@ -17,6 +22,8 @@
     if (show && changed) renderEpisodes();
   }
   function stopPhone() {
+    if (phoneItem?.id) api('/api/controller/danmaku', { method: 'POST',
+      body: JSON.stringify({ action: 'auto-stop', streamId: phoneItem.id }) }).catch(() => {});
     phoneGeneration++; phoneItem = null; phoneDanmakuVersion = '';
     if (hls) { hls.destroy(); hls = null; }
     phoneVideo.pause(); phoneVideo.removeAttribute('src'); phoneVideo.load();
@@ -28,10 +35,11 @@
     const item = phoneItem;
     phoneDanmakuBusy = true;
     try {
-      const data = await api(item.danmakuPath + '?version=' + encodeURIComponent(phoneDanmakuVersion));
+      const data = await api(item.danmakuPath + '?client=phone&version=' + encodeURIComponent(phoneDanmakuVersion));
       if (item !== phoneItem) return;
       if (!data.unchanged) phoneDanmaku.setData(data.comments);
       phoneDanmaku.configure(data); phoneDanmakuVersion = data.version;
+      showAutoDanmaku(data.automatic, 'phone');
     } catch { /* Danmaku is optional and cannot stop playback. */ }
     finally { phoneDanmakuBusy = false; }
   }
@@ -164,6 +172,7 @@
   function renderState(value) {
     if (state && value.revision < state.revision) return;
     state = value; connection(value.tvOnline);
+    showAutoDanmaku(value.danmaku, 'tv');
     $('watch-current').disabled = !value.media;
     $('now-title').textContent = value.active?.title || value.tv.title || 'Nothing playing';
     const phaseStatus = { resolving: 'Finding the stream on your Mac… up to 45 seconds.',
@@ -215,6 +224,14 @@
   async function danmakuAction(input) {
     return api('/api/controller/danmaku', { method: 'POST', body: JSON.stringify(input) }, 25000);
   }
+  $('danmaku-retry').onclick = async () => {
+    const media = playingMedia();
+    if (!media?.id) return notice('请先播放对应的那一集。', true);
+    $('danmaku-retry').disabled = true;
+    try { showAutoDanmaku(await danmakuAction({ action: 'auto-retry', streamId: media.id, client: mode === 'player' ? 'phone' : 'tv' }), mode === 'player' ? 'phone' : 'tv'); }
+    catch (error) { notice(error.message, true); }
+    finally { $('danmaku-retry').disabled = false; }
+  };
   $('danmaku-save').onclick = async () => {
     try { await danmakuAction({ action: 'settings', enabled: $('danmaku-enabled').checked, offset: Number($('danmaku-offset').value) }); notice('Danmaku settings applied.'); }
     catch (error) { notice(error.message, true); }
@@ -388,7 +405,7 @@
     await updateState();
     try {
       const settings = await api('/api/controller/danmaku');
-      $('danmaku-status').textContent = settings.message;
+      $('danmaku-status').textContent = '当前支持官方 Kazumi 缓存弹幕转发；不在 Mac 播放视频的自动获取通道尚未接通。' + (settings.configured ? '额外在线匹配已配置。' : '额外在线搜索未配置。');
       $('danmaku-enabled').checked = settings.enabled !== false;
       $('danmaku-offset').value = settings.offset || 0;
       $('danmaku-search').disabled = !settings.configured;
