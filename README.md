@@ -321,6 +321,13 @@ an old sparse attachment. Switching/stopping playback or disabling comments canc
 desktop work and exits the owned client. TV 0.6.1 already supports this protocol;
 no TV reinstall is needed. On the phone, refresh the remote page after deployment.
 
+Cold launches poll official process/window readiness before preparing its UI;
+only transient window-creation races are retried, not permission/layout failures
+or download clicks. Failure logs include a safe action/error category rather
+than arbitrary UI output. The verified cache registry is refreshed during use,
+so a separately validated export can be approved without another gateway restart.
+Old/unverified caches are still never blanket-trusted.
+
 The private local `danmu_api` worker remains available for **manual backup search**.
 It is not automatically chosen just because a small nonzero result was found.
 To use it as the automatic provider instead, set `kazumiDanmaku.enabled: false`

@@ -53,6 +53,7 @@ export function createAutoDanmaku({ cache, danmaku, acquire, now = Date.now, del
         job.acquisition = Promise.resolve().then(() => valid(job) && !job.abort.signal.aborted && acquire({ title: job.title, episode: job.episode,
           provider: job.provider, signal: job.abort.signal, onProgress: stage => {
             const messages = { metadata: '正在核对番剧与集数…', launch: '正在启动官方 Kazumi 获取弹幕…',
+              startup: '正在等待官方 Kazumi 启动窗口就绪…',
               source: '官方 Kazumi 正在选择同名来源…', waiting: '正在等待官方弹幕文件写完整，视频继续播放…',
               ready: '官方弹幕已就绪，正在停止 Mac 下载和播放…' };
             if (messages[stage]) set(job, 'acquiring', messages[stage]);

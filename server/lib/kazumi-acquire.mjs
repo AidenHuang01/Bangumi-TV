@@ -16,9 +16,21 @@ const failure = message => Object.assign(new Error(message), { publicMessage: me
 
 export function createKazumiUIDriver({ run = exec } = {}) {
   return async function ui(input, signal) {
-    const result = await run('/usr/bin/osascript', ['-l', 'JavaScript', driverPath, JSON.stringify(input)],
-      { signal, timeout: 12000, maxBuffer: 512 * 1024 });
-    return JSON.parse(result.stdout);
+    try {
+      const result = await run('/usr/bin/osascript', ['-l', 'JavaScript', driverPath, JSON.stringify(input)],
+        { signal, timeout: 12000, maxBuffer: 512 * 1024 });
+      return JSON.parse(result.stdout);
+    } catch (error) {
+      // Structured diagnostics only: never put raw AX output, paths, arbitrary
+      // stderr, clipboard data or command arguments in gateway logs/responses.
+      const diagnostic = String(error.stderr || error.message || '');
+      const code = /assistive|not allowed|not authorized|-25211|-1743/i.test(diagnostic) ? 'UI_PERMISSION'
+        : /exactly one window|Invalid index|invalid window|-1719|-1728/i.test(diagnostic) ? 'UI_WINDOW_NOT_READY'
+          : /layout changed|toolbar changed/i.test(diagnostic) ? 'UI_LAYOUT_CHANGED'
+            : /control is missing|not visible|visible bounds/i.test(diagnostic) ? 'UI_CONTROL_UNAVAILABLE'
+              : error.killed || error.code === 'ETIMEDOUT' ? 'UI_COMMAND_TIMEOUT' : 'UI_OPERATION_FAILED';
+      throw Object.assign(error, { uiCode: code, uiAction: input.action });
+    }
   };
 }
 
@@ -88,9 +100,10 @@ export function createKazumiLifecycle({ run = exec, ui = createKazumiUIDriver({ 
 }
 
 // Serialize desktop ownership; cancelled queued jobs never launch UI.
-export function createKazumiAcquirer({ cache, ui = createKazumiUIDriver(),
+export function createKazumiAcquirer({ cache, verifiedCache, ui = createKazumiUIDriver(),
   lifecycle = createKazumiLifecycle({ ui }), subject = findKazumiSubject,
   platform = process.platform, timeout = 180000, onCache = async () => {},
+  startupAttempts = 40,
   onEvent = () => {}, wait = (ms, signal) => sleep(ms, undefined, { signal }) } = {}) {
   let tail = Promise.resolve();
   return request => {
@@ -106,9 +119,9 @@ export function createKazumiAcquirer({ cache, ui = createKazumiUIDriver(),
     parent?.addEventListener('abort', cancel, { once: true });
     const timer = setTimeout(() => abort.abort(failure('官方 Kazumi 获取弹幕超时；视频继续播放，可在手机重试。')), timeout);
     const signal = abort.signal;
-    let owned = false, originalSize, metadata;
+    let owned = false, originalSize, metadata, lastAction = 'metadata';
     const event = (stage, extra = {}) => { try { onEvent({ stage, title, episode, ...extra }); onProgress(stage); } catch {} };
-    const call = input => { signal.throwIfAborted(); return ui(input, signal); };
+    const call = input => { signal.throwIfAborted(); lastAction = input.action; return ui(input, signal); };
     const snapshot = async () => (await call({ action: 'snapshot' })).rows || [];
     const press = (row, scope) => call({ action: 'press', label: row.label, role: row.role, provider: scope });
     async function until(test, attempts = 40) {
@@ -121,10 +134,34 @@ export function createKazumiAcquirer({ cache, ui = createKazumiUIDriver(),
     }
     try {
       event('metadata'); metadata = await subject(title, { signal }); signal.throwIfAborted();
+      // A queued request may gain an approved cache while another job finishes.
+      // Never open/download again solely because its earlier cache check missed it.
+      const saved = verifiedCache && (await verifiedCache.list()).items.find(item =>
+        String(item.bangumiId) === String(metadata.id) && item.episode === episode);
+      if (saved) {
+        const data = await verifiedCache.read(saved.id);
+        if (parseDanmaku(data.content).length) { event('cached'); return data; }
+      }
       const before = new Map((await cache.list()).items.map(item => [item.id, item.updatedAt]));
-      event('launch'); await lifecycle.start(); owned = true;
-      await wait(900, signal);
-      const prepared = await call({ action: 'prepare' }); originalSize = prepared.originalSize;
+      lastAction = 'launch'; event('launch'); await lifecycle.start(); owned = true;
+      event('startup');
+      let prepared = false;
+      for (let i = 0; i < startupAttempts; i++) {
+        try {
+          const state = await call({ action: 'readiness' });
+          if (state.windows > 1) throw failure('官方 Kazumi 出现多个窗口，已停止自动操作；请关闭多余窗口后重试。');
+          if (state.ready) {
+            originalSize = (await call({ action: 'prepare' })).originalSize;
+            prepared = true; break;
+          }
+        } catch (error) {
+          // Readiness can race window creation/destruction. Do not retry real
+          // permission/layout failures or repeat any episode/download click.
+          if (error.uiCode !== 'UI_WINDOW_NOT_READY') throw error;
+        }
+        await wait(500, signal);
+      }
+      if (!prepared) throw failure('官方 Kazumi 启动窗口未就绪，已停止本次获取；保持 Mac 桌面登录后可在手机重试。');
       await until(rows => rows.some(row => row.label.includes('第 1 个标签，共 4 个')));
       await call({ action: 'home-search' });
       await until(rows => rows.some(row => row.role === 'AXTextField'));
@@ -191,11 +228,12 @@ export function createKazumiAcquirer({ cache, ui = createKazumiUIDriver(),
         await wait(1000, signal);
       }
     } catch (error) {
-      event(parent?.aborted ? 'cancelled' : 'failed');
+      event(parent?.aborted ? 'cancelled' : 'failed', { action: lastAction,
+        code: error.uiCode || (signal.aborted ? 'ACQUISITION_ABORTED' : error.publicMessage ? 'EXPECTED_FAILURE' : 'ACQUISITION_FAILED') });
       if (parent?.aborted) return;
       if (signal.aborted) throw signal.reason;
       if (error.publicMessage) throw error;
-      if (/assistive|not allowed|not authorized|-25211|-1743/i.test(error.stderr || error.message || ''))
+      if (error.uiCode === 'UI_PERMISSION' || /assistive|not allowed|not authorized|-25211|-1743/i.test(error.stderr || error.message || ''))
         throw failure('请在 Mac 辅助功能权限中允许 osascript，并保持桌面登录。');
       throw failure('官方 Kazumi 自动获取未完成，可能是来源或界面变化；视频继续播放，可在手机重试。');
     } finally {

@@ -37,6 +37,8 @@ function scenario(options = {}) {
     read: async () => ({ content: JSON.stringify({ danmakus: [{ m: 'test', p: '1,1,16777215,u' }] }) }) };
   const ui = async input => {
     if (input.action !== 'snapshot') actions.push(input);
+    if (options.beforeUI) { const value = await options.beforeUI(input); if (value !== undefined) return value; }
+    if (input.action === 'readiness') return { ready: true, windows: 1 };
     if (input.action === 'prepare') return { originalSize: [1280, 860] };
     if (input.action === 'player-state') return { ready: phase === 'player' };
     if (input.action === 'snapshot') {
@@ -94,6 +96,59 @@ test('old or changed caches are never automatically trusted; approved provenance
   await verified.approve(item); assert.equal((await verified.list()).items.length, 1);
   assert.equal((await createVerifiedKazumiCache(cache, { file }).list()).items.length, 1);
   item = { ...item, updatedAt: 11 }; assert.equal((await verified.list()).items.length, 0);
+});
+
+test('live provenance registry sees a separately approved export without a gateway restart', async t => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'bangumi-live-provenance-test-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const first = { id: 'a'.repeat(32), updatedAt: 100 }, second = { id: 'b'.repeat(32), updatedAt: 200 };
+  const cache = { list: async () => ({ items: [first, second] }), read: async () => ({ content: '{}' }) };
+  const file = path.join(dir, 'approved.json'), live = createVerifiedKazumiCache(cache, { file });
+  assert.equal((await live.list()).items.length, 0);
+  await live.approve(first);
+  await createVerifiedKazumiCache(cache, { file }).approve(second);
+  assert.deepEqual((await live.list()).items, [first, second]);
+  await writeFile(file, '{invalid'); assert.equal((await live.list()).items.length, 0);
+});
+
+test('cold launch polls window readiness and retries only a transient prepare race', async () => {
+  let checks = 0, prepares = 0;
+  const f = scenario({ beforeUI: input => {
+    if (input.action === 'readiness') return { ready: ++checks > 3, windows: checks > 3 ? 1 : 0 };
+    if (input.action === 'prepare' && ++prepares === 1) throw Object.assign(new Error('race'), { uiCode: 'UI_WINDOW_NOT_READY' });
+  } });
+  await f.acquire({ title: '命运石之门', episode: 2 });
+  assert.equal(checks, 5); assert.equal(prepares, 2); assert.equal(f.approved.length, 1); assert.equal(f.stops(), 1);
+  assert.equal(f.actions.filter(input => input.label === '下载 1 集').length, 1);
+});
+
+test('startup timeout and permission failure stop the owned app and log only safe stage/action codes', async () => {
+  const events = [];
+  const f = scenario({ startupAttempts: 3, onEvent: event => events.push(event),
+    beforeUI: input => input.action === 'readiness' ? { ready: false, windows: 0 } : undefined });
+  await assert.rejects(f.acquire({ title: '命运石之门', episode: 2 }), /启动窗口未就绪/);
+  assert.equal(f.actions.length, 3); assert.equal(f.stops(), 1);
+  assert.ok(events.some(event => event.stage === 'failed' && event.action === 'readiness'));
+  const g = scenario({ onEvent: event => events.push(event), beforeUI: () => {
+    throw Object.assign(new Error('private clipboard/diagnostics'), { uiCode: 'UI_PERMISSION' });
+  } });
+  await assert.rejects(g.acquire({ title: '命运石之门', episode: 2 }), /辅助功能/);
+  assert.equal(g.actions.length, 1); assert.equal(g.stops(), 1);
+  assert.ok(events.some(event => event.code === 'UI_PERMISSION'));
+  assert.doesNotMatch(JSON.stringify(events), /private|clipboard|diagnostics/);
+});
+
+test('driver classifies window races without exposing arbitrary stderr in safe error fields', async () => {
+  const driver = createKazumiUIDriver({ run: async () => { throw Object.assign(new Error('private'), { stderr: 'private: Invalid index. (-1719)' }); } });
+  await assert.rejects(driver({ action: 'prepare' }), error => error.uiCode === 'UI_WINDOW_NOT_READY' && error.uiAction === 'prepare');
+});
+
+test('an already approved exact subject/episode bypasses UI even when raw cache contains other seasons', async () => {
+  const row = { id: 'a'.repeat(32), bangumiId: '10380', episode: 2 };
+  const f = scenario({ verifiedCache: { list: async () => ({ items: [{ ...row, bangumiId: '999' }, row] }),
+    read: async () => ({ content: '[{"time":1,"text":"verified"}]', source: 'official verified cache' }) } });
+  const result = await f.acquire({ title: '命运石之门', episode: 2 });
+  assert.match(result.content, /verified/); assert.equal(f.actions.length, 0); assert.equal(f.stops(), 0);
 });
 
 test('English alias resolves the main series, not its short sequel', async () => {

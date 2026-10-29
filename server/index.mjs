@@ -34,7 +34,7 @@ if (settings.danmu?.enabled !== false) {
   } catch (error) { console.error(error.message); } // Video service still starts if comments are unavailable.
 }
 const officialEnabled = process.platform === 'darwin' && settings.kazumiDanmaku?.enabled !== false;
-const acquireOfficial = officialEnabled ? createKazumiAcquirer({ cache: kazumiCache,
+const acquireOfficial = officialEnabled ? createKazumiAcquirer({ cache: kazumiCache, verifiedCache: automaticCache,
   onCache: item => automaticCache.approve(item),
   onEvent: event => console.log('[official-danmaku] ' + JSON.stringify({ time: new Date().toISOString(), ...event }))
 }) : undefined;

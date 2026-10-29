@@ -4,6 +4,16 @@ function run(argv) {
   const input = JSON.parse(argv[0] || '{}');
   const events = Application('System Events');
   const proc = events.applicationProcesses.whose({ bundleIdentifier: 'com.example.kazumi' })[0];
+  if (input.action === 'readiness') {
+    // Cold launch can take longer than a fixed 900ms. This action only inspects
+    // process/window readiness, without changing focus, size or AX settings.
+    let exists = false;
+    try { exists = proc.exists(); } catch (error) {
+      if (!/Invalid index|-1719|-1728/i.test(String(error))) throw error;
+    }
+    const count = exists ? proc.windows.length : 0;
+    return JSON.stringify({ ready: exists && count === 1, windows: count });
+  }
   if (!proc.exists() || proc.windows.length !== 1) throw new Error('Kazumi must have exactly one window');
   const win = proc.windows[0];
   function get(fn, fallback) { try { return fn(); } catch (_) { return fallback; } }
