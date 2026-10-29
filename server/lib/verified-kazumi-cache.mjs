@@ -14,7 +14,10 @@ export function createVerifiedKazumiCache(cache, { file = null } = {}) {
       const text = await readFile(file, 'utf8');
       if (text.length > 100000) return;
       const data = JSON.parse(text);
-      approved = Object.fromEntries(Object.entries(data).filter(([id, time]) => /^[a-f0-9]{32}$/.test(id) && Number.isFinite(time)).slice(-500));
+      // v1 came from the old unverified wide-layout workflow. Never silently
+      // trust it after the known source/season mismatch in that experiment.
+      if (data.version !== 2 || !data.items || typeof data.items !== 'object') return;
+      approved = Object.fromEntries(Object.entries(data.items).filter(([id, time]) => /^[a-f0-9]{32}$/.test(id) && Number.isFinite(time)).slice(-500));
     } catch { /* Missing provenance is untrusted, never a playback failure. */ }
   }
   return {
@@ -32,7 +35,7 @@ export function createVerifiedKazumiCache(cache, { file = null } = {}) {
         approved = Object.fromEntries(Object.entries(approved).slice(-500));
         if (file) {
           await mkdir(path.dirname(file), { recursive: true });
-          await writeFile(file + '.tmp', JSON.stringify(approved), { mode: 0o600 });
+          await writeFile(file + '.tmp', JSON.stringify({ version: 2, items: approved }), { mode: 0o600 });
           await rename(file + '.tmp', file);
         }
       });

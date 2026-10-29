@@ -405,11 +405,11 @@
     await updateState();
     try {
       const settings = await api('/api/controller/danmaku');
-      $('danmaku-status').textContent = settings.engine === 'danmu_api' ? settings.message + ' 如匹配不正确，可在下方搜索并选择弹幕来源。' :
+      $('danmaku-status').textContent = settings.engine === 'official-kazumi' ? settings.message + ' 已缓存的对应集会直接加载；失败时点“重新获取当前集弹幕”。下方在线搜索是备用来源。' : settings.engine === 'danmu_api' ? settings.message + ' 如匹配不正确，可在下方搜索并选择弹幕来源。' :
         '当前支持缓存弹幕转发；后台服务未连接时，可使用手动导入。';
       $('danmaku-enabled').checked = settings.enabled !== false;
       $('danmaku-offset').value = settings.offset || 0;
-      $('danmaku-search').disabled = !settings.configured;
+      $('danmaku-search').disabled = !(settings.manualConfigured ?? settings.configured);
     } catch (error) { $('danmaku-status').textContent = error.message; }
     try {
       const result = await api('/api/providers');

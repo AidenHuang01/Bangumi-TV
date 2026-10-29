@@ -93,3 +93,12 @@ test('danmaku works without credentials, settings invalidate cache and secrets s
   assert.equal(d.read('video', initial.version).unchanged, true);
   d.settings({ offset: 2 }); assert.equal(d.read('video', initial.version).offset, 2);
 });
+
+test('official automatic mode is described separately from manual backup availability', async () => {
+  const d = createDanmaku({ appId: '', appSecret: '', automatic: {
+    engine: 'official-kazumi', configured: true, message: '官方 Kazumi 自动弹幕'
+  } });
+  assert.equal(d.status().configured, true); assert.equal(d.status().manualConfigured, false);
+  assert.equal(d.status().engine, 'official-kazumi'); assert.match(d.status().message, /官方/);
+  await assert.rejects(d.search('test'), /DANDAN_APP_ID/);
+});

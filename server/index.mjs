@@ -10,6 +10,7 @@ import { createDiscovery, loadRules } from './lib/discovery.mjs';
 import { startKazumiCore } from './lib/kazumi-client.mjs';
 import { startDanmuService } from './lib/danmu-service.mjs';
 import { createDanmuProvider } from './lib/danmu-provider.mjs';
+import { createKazumiAcquirer } from './lib/kazumi-acquire.mjs';
 
 const port = Number(process.env.PORT || 8787);
 const host = process.env.HOST || '0.0.0.0';
@@ -32,14 +33,19 @@ if (settings.danmu?.enabled !== false) {
     danmuProvider = createDanmuProvider(danmuService);
   } catch (error) { console.error(error.message); } // Video service still starts if comments are unavailable.
 }
+const officialEnabled = process.platform === 'darwin' && settings.kazumiDanmaku?.enabled !== false;
+const acquireOfficial = officialEnabled ? createKazumiAcquirer({ cache: kazumiCache,
+  onCache: item => automaticCache.approve(item),
+  onEvent: event => console.log('[official-danmaku] ' + JSON.stringify({ time: new Date().toISOString(), ...event }))
+}) : undefined;
 const danmaku = createDanmaku({ ...settings.dandan, core, provider: danmuProvider,
+  automatic: officialEnabled ? { engine: 'official-kazumi', configured: true,
+    message: '官方 Kazumi 自动弹幕：播放后获取对应集，文件就绪后转发至电视／手机并退出 Mac 客户端。获取期间客户端可能短暂显示播放画面。' } : undefined,
   coreConfigured: core ? (await core.health()).danmaku?.configured === true : false });
 const app = createApp({ mediaDir: process.env.MEDIA_DIR, sourcesFile: process.env.SOURCES_FILE, discovery, kazumiCache,
-  automaticCache: danmuProvider ? { list: async () => ({ items: [] }) } : automaticCache,
-  acquireDanmaku: danmuProvider?.acquire,
-  prefetchDanmaku: selection => danmaku.status().enabled ? danmuProvider?.prefetch(selection) : undefined,
-  // Desktop UI acquisition starts a second video player. It is intentionally
-  // disconnected: this Mac must only bridge comments, not play the episode.
+  automaticCache: officialEnabled || !danmuProvider ? automaticCache : { list: async () => ({ items: [] }) },
+  acquireDanmaku: officialEnabled ? acquireOfficial : danmuProvider?.acquire,
+  prefetchDanmaku: selection => !officialEnabled && danmaku.status().enabled ? danmuProvider?.prefetch(selection) : undefined,
   danmaku,
   recentHistory: createRecentHistory() });
 app.on('close', () => danmuService?.close());

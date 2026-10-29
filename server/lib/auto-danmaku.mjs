@@ -21,7 +21,7 @@ export function createAutoDanmaku({ cache, danmaku, acquire, now = Date.now, del
     if (danmaku.status().enabled === false) return { state: 'disabled', message: '弹幕已关闭。', count: 0 };
     const job = jobs.get(id);
     return job ? { state: job.state, message: job.message, count: job.count || 0 }
-      : { state: 'idle', message: acquire ? '选集后自动获取弹幕，Mac 不播放视频。' : '当前可转发已缓存弹幕；后台获取新弹幕的通道尚未接通。', count: 0 };
+      : { state: 'idle', message: acquire ? '播放后自动获取对应集弹幕，视频无需等待。' : '当前可转发已缓存弹幕；后台获取新弹幕的通道尚未接通。', count: 0 };
   }
   function set(job, state, message) { if (valid(job)) Object.assign(job, { state, message }); }
   async function check(job) {
@@ -37,6 +37,7 @@ export function createAutoDanmaku({ cache, danmaku, acquire, now = Date.now, del
         if (!valid(job)) return;
         // A manual import/match always wins over a late automatic result.
         if (danmaku.read(job.id).count) {
+          job.count = danmaku.read(job.id).count;
           set(job, 'loaded', '当前视频已有弹幕，保留已选弹幕。');
           return;
         }
@@ -50,7 +51,12 @@ export function createAutoDanmaku({ cache, danmaku, acquire, now = Date.now, del
         job.requested = true;
         set(job, 'acquiring', '正在后台获取当前集弹幕，视频继续播放…');
         job.acquisition = Promise.resolve().then(() => valid(job) && !job.abort.signal.aborted && acquire({ title: job.title, episode: job.episode,
-          provider: job.provider, signal: job.abort.signal })).then(result => {
+          provider: job.provider, signal: job.abort.signal, onProgress: stage => {
+            const messages = { metadata: '正在核对番剧与集数…', launch: '正在启动官方 Kazumi 获取弹幕…',
+              source: '官方 Kazumi 正在选择同名来源…', waiting: '正在等待官方弹幕文件写完整，视频继续播放…',
+              ready: '官方弹幕已就绪，正在停止 Mac 下载和播放…' };
+            if (messages[stage]) set(job, 'acquiring', messages[stage]);
+          } })).then(result => {
           if (!valid(job) || job.abort.signal.aborted) return;
           if (result?.content && !danmaku.read(job.id).count) {
             const imported = danmaku.import(job.id, result.content, result.source || 'danmu_api');
@@ -117,6 +123,7 @@ export function createAutoDanmaku({ cache, danmaku, acquire, now = Date.now, del
     cancel() { for (const job of jobs.values()) job.abort.abort(); jobs.clear(); },
     retry(stream, consumer) {
       const old = jobs.get(stream.id); old?.abort.abort(); jobs.delete(stream.id);
+      danmaku.clear?.(stream.id); // Explicit retry must replace a sparse old attachment too.
       return this.observe(stream, consumer);
     },
     async settled() { await Promise.all([...jobs.values()].map(job => job.work)); },

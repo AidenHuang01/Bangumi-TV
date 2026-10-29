@@ -38,7 +38,7 @@ export function parseDanmaku(content) {
 }
 
 export function createDanmaku({ appId = process.env.DANDAN_APP_ID || '', appSecret = process.env.DANDAN_APP_SECRET || '', fetcher = fetch,
-  core, coreConfigured = false, provider } = {}) {
+  core, coreConfigured = false, provider, automatic } = {}) {
   const files = new Map();
   let revision = 0, settings = { enabled: true, offset: 0, opacity: 0.8 };
   const useCore = !!core && (coreConfigured || !(appId && appSecret));
@@ -74,10 +74,11 @@ export function createDanmaku({ appId = process.env.DANDAN_APP_ID || '', appSecr
     return { count: comments.length, source };
   }
   return {
-    status() { return { configured, engine: provider?.engine || (useCore ? 'kazumi' : 'dandanplay'), ...settings,
-      message: provider ? 'danmu_api 已连接：选集后后台获取弹幕，Mac 不播放视频。' : configured ? (useCore ? 'Kazumi danmaku connected. Choose a show and episode.' : 'DanDanPlay configured. Choose an episode match.')
+    status() { return { configured: configured || automatic?.configured === true, manualConfigured: configured,
+      engine: automatic?.engine || provider?.engine || (useCore ? 'kazumi' : 'dandanplay'), ...settings,
+      message: automatic?.message || (provider ? 'danmu_api 已连接：选集后后台获取弹幕，Mac 不播放视频。' : configured ? (useCore ? 'Kazumi danmaku connected. Choose a show and episode.' : 'DanDanPlay configured. Choose an episode match.')
         : useCore ? '源码构建未配置在线 API。下方“官方 Kazumi 弹幕转发”可免密钥读取 Mac 上的官方客户端缓存。'
-          : 'Online danmaku awaits API keys. XML / JSON import is available.' }; },
+          : 'Online danmaku awaits API keys. XML / JSON import is available.') }; },
     settings(input) {
       if (typeof input.enabled === 'boolean') settings.enabled = input.enabled;
       if (input.offset !== undefined) { if (!Number.isFinite(input.offset) || Math.abs(input.offset) > 600) throw fail('Offset must be within ±600 seconds'); settings.offset = input.offset; }
@@ -91,6 +92,7 @@ export function createDanmaku({ appId = process.env.DANDAN_APP_ID || '', appSecr
         ...(version === current ? { unchanged: true } : { comments: entry?.comments || [] }) };
     },
     import(streamId, content, source = 'Imported file') { return put(streamId, parseDanmaku(content), source); },
+    clear(streamId) { files.delete(streamId); revision++; },
     async search(anime, episode) {
       if (!anime?.trim() || anime.length > 100) throw fail('Enter an anime title');
       if (provider) return provider.search(anime);

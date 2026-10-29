@@ -283,11 +283,29 @@ the video, and has its own show/hide control. Episode changes cancel stale jobs;
 only caches with verified acquisition provenance are eligible for automatic loading.
 Older caches remain available through explicit manual selection.
 
-**Background acquisition now uses a private local `danmu_api` worker.** Selecting
-an episode on the phone starts comment acquisition in parallel with video
-resolution. The TV polls its existing comment endpoint and loads the result
-without restarting playback. Mac video playback, video downloads for danmaku,
-desktop UI automation, and official Kazumi credentials are not used.
+**macOS automatic acquisition now uses the unmodified official Kazumi 2.4.2 app.**
+After TV/phone playback starts, the gateway checks verified comment caches first.
+For a new episode it launches the official app, matches public Bangumi names and
+aliases plus release date, selects an exact-title source, and caches only the
+requested episode. Once complete, parseable `danmaku.json` is available, it forwards
+the comments and quits the official app, verifying that its process stopped.
+It does not wait for the whole video download. The official window may briefly
+appear/play and some video bytes are downloaded during acquisition; this is not a
+headless comment-only API. The Mac must be logged in with existing Accessibility
+permission for `osascript`. The verified 640×860 portrait layout is used, then the
+original window size is restored. No API credentials are read or extracted.
+
+Do not leave the official app open for personal viewing during automation: the
+gateway refuses to take over an existing official process. A failed attempt does
+not stop TV video; use **弹幕 → 重新获取当前集弹幕** on the phone. Retry also replaces
+an old sparse attachment. Switching/stopping playback or disabling comments cancels
+desktop work and exits the owned client. TV 0.6.1 already supports this protocol;
+no TV reinstall is needed. On the phone, refresh the remote page after deployment.
+
+The private local `danmu_api` worker remains available for **manual backup search**.
+It is not automatically chosen just because a small nonzero result was found.
+To use it as the automatic provider instead, set `kazumiDanmaku.enabled: false`
+in `server/settings.local.json` and restart the gateway.
 
 Run `npm run setup:danmu` once, then start/restart the gateway. Upstream is pinned
 to `huangxd-/danmu_api` commit `4d325e096bbbf0c1ff261a9bfa638f7c58784f60`;
@@ -306,13 +324,10 @@ different-year homonyms, sequels and specials are not silently substituted.
 Results are cached in gateway memory for six hours (up to 30 episodes), shared
 across video sources, and refreshed after a gateway restart.
 
-The old experimental desktop UI acquisition code remains disconnected because
-it starts a second player. Do not enable it for this workflow.
+#### Manual backup: forward an existing official Kazumi cache
 
-#### Optional legacy backup: forward an existing official Kazumi cache
-
-This backup is not needed for automatic `danmu_api` acquisition above. Normal TV
-viewing does not require opening or playing anything in the desktop Kazumi app.
+Automatic loading only trusts files verified by the current exact-title workflow.
+Older experimental provenance is invalidated; other files require manual selection.
 
 This path runs the **official desktop release**, not our rebuilt core, to obtain
 comments. In Kazumi enable **下载设置 → 缓存弹幕**, open the correct show/source,

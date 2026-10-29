@@ -74,6 +74,18 @@ test('public reads cannot begin acquisition; failures are nonblocking and explic
   f.auto.retry(stream, 'tv'); await f.auto.settled(); await Promise.resolve(); assert.equal(acquisitions, 2);
 });
 
+test('explicit retry replaces sparse comments and receives official contents asynchronously', async t => {
+  let finish;
+  const f = fixture(t, { delay: 0, acquire: () => new Promise(resolve => { finish = resolve; }) });
+  f.danmaku.import(id, content, 'old sparse source'); f.auto.observe(stream);
+  assert.equal(f.auto.status(id).count, 1);
+  f.auto.retry(stream, 'tv'); await f.auto.settled(); await Promise.resolve();
+  assert.equal(f.danmaku.read(id).count, 0);
+  finish({ content: JSON.stringify({ danmakus: [{ p: '2,1,16777215,u', m: 'official' }, { p: '3,1,16777215,u', m: 'second' }] }), source: 'Kazumi 官方缓存' });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(f.danmaku.read(id).count, 2); assert.match(f.danmaku.read(id).source, /官方/);
+});
+
 test('protected phone playing event activates automation while hostile origin and unknown streams cannot', async t => {
   let acquisitions = 0;
   const server = createApp({ discovery: { stream: key => key === id ? stream : null, close: async () => {} },

@@ -5,6 +5,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { requestUpstream } from './upstream.mjs';
 import { readBody } from './discovery.mjs';
+import { bangumiAliases } from './bangumi-titles.mjs';
 
 const defaultRoot = process.platform === 'darwin' ? path.join(homedir(),
   'Library/Containers/com.example.kazumi/Data/Library/Application Support/com.example.kazumi/downloads') : null;
@@ -27,7 +28,7 @@ export function createKazumiCache({ root = process.env.KAZUMI_CACHE_DIR || defau
       const data = JSON.parse((await readBody(result, 1024 * 1024)).toString());
       if (typeof (data.name_cn || data.name) === 'string') value = {
         title: (data.name_cn || data.name).slice(0, 200),
-        aliases: [data.name_cn, data.name].filter(name => typeof name === 'string' && name).map(name => name.slice(0, 200))
+        aliases: bangumiAliases(data)
       };
     } catch { /* Metadata does not gate local comment import. */ }
     titles.set(id, value);
