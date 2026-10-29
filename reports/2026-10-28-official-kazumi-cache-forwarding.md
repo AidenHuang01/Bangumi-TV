@@ -64,3 +64,35 @@ Default discovery is restricted to the official macOS sandbox download directory
 a custom local directory requires the server-side `KAZUMI_CACHE_DIR` environment
 setting. Requests from the phone accept opaque cache IDs, not filesystem paths.
 Only bounded comment JSON files are read; app binaries/databases/keys are not read.
+
+## Fresh Lycoris Recoil export verification — 2026-10-28 evening
+
+- User explicitly approved temporarily loading and caching only episode 1, then
+  stopping the additional desktop playback/download. Existing TV playback was not changed.
+- Selected the 2022 main series, Bangumi `364450`, not the 2025 short series.
+  Official Kazumi's AGE selection showed 13 episodes.
+- The wide video-only layout did not expose usable player controls to our UI
+  automation. Switching the existing window to **640 × 860 logical points** made
+  the episode tab and its download button directly visible, without hovering
+  over the video surface. Selected only episode 1 and pressed `下载 1 集`.
+- A new official `danmaku.json` appeared at 21:58:49 local time: **162,029 bytes,
+  2,610 comments**. Both the raw file and normalized TV JSON parsed to 2,610
+  comments; timestamps span 0–1,442 seconds. The earlier `danmu_api`/Animeko
+  result for this same series/episode contained only 20 comments.
+- Exported raw JSON, normalized JSON and provenance into an ignored, private
+  `server/data/danmaku-exports/lycoris-ep1-official-*` directory. No comment files,
+  credentials or downloaded video were committed.
+- The watcher requested quitting official Kazumi as soon as a complete usable
+  file was exported, then verified its process had exited. No desktop player or
+  downloader was left running. Restored the original 1280 × 860 window size in
+  a homepage-only relaunch and exited again.
+- The TV remained connected on 0.6.1, paused at 2.157 seconds, with its existing
+  20-comment Animeko attachment unchanged. The 2,610-comment file was **not**
+  attached to the TV during this export test.
+
+This proves a fresh official-client cache/export route, not direct extraction
+from streaming-player memory and not a production automatic episode-following
+service. The old fixed-wide-layout helper is still disconnected and must not be
+re-enabled unchanged. One earlier UI attempt crashed official Kazumi; automation
+reliability, exact episode identity and prompt download cancellation still need
+dedicated implementation and regression testing before enabling this by default.
