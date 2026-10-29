@@ -21,7 +21,7 @@ export function createAutoDanmaku({ cache, danmaku, acquire, now = Date.now, del
     if (danmaku.status().enabled === false) return { state: 'disabled', message: '弹幕已关闭。', count: 0 };
     const job = jobs.get(id);
     return job ? { state: job.state, message: job.message, count: job.count || 0 }
-      : { state: 'idle', message: '当前可转发已缓存弹幕；后台获取新弹幕的通道尚未接通。', count: 0 };
+      : { state: 'idle', message: acquire ? '选集后自动获取弹幕，Mac 不播放视频。' : '当前可转发已缓存弹幕；后台获取新弹幕的通道尚未接通。', count: 0 };
   }
   function set(job, state, message) { if (valid(job)) Object.assign(job, { state, message }); }
   async function check(job) {
@@ -48,15 +48,20 @@ export function createAutoDanmaku({ cache, danmaku, acquire, now = Date.now, del
       }
       if (acquire && !job.requested) {
         job.requested = true;
-        set(job, 'acquiring', '正在让官方 Kazumi 获取这一集的弹幕，视频继续播放…');
+        set(job, 'acquiring', '正在后台获取当前集弹幕，视频继续播放…');
         job.acquisition = Promise.resolve().then(() => valid(job) && !job.abort.signal.aborted && acquire({ title: job.title, episode: job.episode,
-          provider: job.provider, signal: job.abort.signal })).then(() => {
-          if (!job.abort.signal.aborted) set(job, 'waiting', '官方客户端已处理请求，正在等待弹幕文件…');
+          provider: job.provider, signal: job.abort.signal })).then(result => {
+          if (!valid(job) || job.abort.signal.aborted) return;
+          if (result?.content && !danmaku.read(job.id).count) {
+            const imported = danmaku.import(job.id, result.content, result.source || 'danmu_api');
+            job.count = imported.count;
+            set(job, 'loaded', '已自动加载 ' + imported.count + ' 条弹幕，与当前播放进度同步。');
+          } else if (!job.abort.signal.aborted) set(job, 'waiting', '弹幕请求已处理，正在等待数据…');
           job.next = 0;
         }, error => {
           if (job.abort.signal.aborted || !valid(job)) return;
-          set(job, 'needs-action', error.publicMessage || '官方 Kazumi 自动获取未完成；等待缓存，不影响视频。');
-        });
+          set(job, 'needs-action', error.publicMessage || '后台弹幕获取未完成，不影响视频；可在手机重试或手动匹配。');
+        }).catch(() => { set(job, 'needs-action', '弹幕数据无法解析，请换一个弹幕来源。'); });
       } else if (!job.requested) {
         set(job, 'waiting', '后台获取新弹幕尚未接通，不会在 Mac 播放视频；可手动选择已缓存弹幕。');
       }

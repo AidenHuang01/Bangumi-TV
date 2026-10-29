@@ -405,7 +405,8 @@
     await updateState();
     try {
       const settings = await api('/api/controller/danmaku');
-      $('danmaku-status').textContent = '当前支持官方 Kazumi 缓存弹幕转发；不在 Mac 播放视频的自动获取通道尚未接通。' + (settings.configured ? '额外在线匹配已配置。' : '额外在线搜索未配置。');
+      $('danmaku-status').textContent = settings.engine === 'danmu_api' ? settings.message + ' 如匹配不正确，可在下方搜索并选择弹幕来源。' :
+        '当前支持缓存弹幕转发；后台服务未连接时，可使用手动导入。';
       $('danmaku-enabled').checked = settings.enabled !== false;
       $('danmaku-offset').value = settings.offset || 0;
       $('danmaku-search').disabled = !settings.configured;

@@ -38,11 +38,11 @@ export function parseDanmaku(content) {
 }
 
 export function createDanmaku({ appId = process.env.DANDAN_APP_ID || '', appSecret = process.env.DANDAN_APP_SECRET || '', fetcher = fetch,
-  core, coreConfigured = false } = {}) {
+  core, coreConfigured = false, provider } = {}) {
   const files = new Map();
   let revision = 0, settings = { enabled: true, offset: 0, opacity: 0.8 };
   const useCore = !!core && (coreConfigured || !(appId && appSecret));
-  const configured = useCore ? coreConfigured : !!(appId && appSecret);
+  const configured = !!provider || (useCore ? coreConfigured : !!(appId && appSecret));
   async function api(path, params = {}) {
     if (!configured) throw fail('Add DANDAN_APP_ID and DANDAN_APP_SECRET on the Mac to enable online danmaku.');
     const timestamp = String(Math.floor(Date.now() / 1000));
@@ -74,8 +74,8 @@ export function createDanmaku({ appId = process.env.DANDAN_APP_ID || '', appSecr
     return { count: comments.length, source };
   }
   return {
-    status() { return { configured, engine: useCore ? 'kazumi' : 'dandanplay', ...settings,
-      message: configured ? (useCore ? 'Kazumi danmaku connected. Choose a show and episode.' : 'DanDanPlay configured. Choose an episode match.')
+    status() { return { configured, engine: provider?.engine || (useCore ? 'kazumi' : 'dandanplay'), ...settings,
+      message: provider ? 'danmu_api 已连接：选集后后台获取弹幕，Mac 不播放视频。' : configured ? (useCore ? 'Kazumi danmaku connected. Choose a show and episode.' : 'DanDanPlay configured. Choose an episode match.')
         : useCore ? '源码构建未配置在线 API。下方“官方 Kazumi 弹幕转发”可免密钥读取 Mac 上的官方客户端缓存。'
           : 'Online danmaku awaits API keys. XML / JSON import is available.' }; },
     settings(input) {
@@ -93,15 +93,21 @@ export function createDanmaku({ appId = process.env.DANDAN_APP_ID || '', appSecr
     import(streamId, content, source = 'Imported file') { return put(streamId, parseDanmaku(content), source); },
     async search(anime, episode) {
       if (!anime?.trim() || anime.length > 100) throw fail('Enter an anime title');
+      if (provider) return provider.search(anime);
       if (useCore) return core.danmakuSearch(anime);
       return api('/api/v2/search/episodes', { anime, episode: String(episode || '').slice(0, 100) });
     },
     async episodes(animeId) {
+      if (provider) return provider.episodes(animeId);
       if (!/^[1-9]\d{0,14}$/.test(String(animeId)) || !Number.isSafeInteger(Number(animeId))) throw fail('Invalid anime ID');
       if (useCore) return core.danmakuEpisodes(animeId);
       return api('/api/v2/bangumi/' + animeId);
     },
     async attach(streamId, episodeId) {
+      if (provider) {
+        const data = await provider.comments(episodeId);
+        return put(streamId, parseDanmaku(data.content), data.source);
+      }
       if (!/^[1-9]\d{0,15}$/.test(String(episodeId)) || !Number.isSafeInteger(Number(episodeId))) throw fail('Invalid episode ID');
       const data = useCore ? await core.danmakuComments(episodeId)
         : await api('/api/v2/comment/' + episodeId, { withRelated: 'true' });

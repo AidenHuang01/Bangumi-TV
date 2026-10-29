@@ -7,12 +7,13 @@ const publicEntry = entry => entry && ({ id: entry.id, title: entry.selection.ti
 
 // One TV / one shared home queue. All source URLs and rule objects stay here, on the Mac.
 export function createController({ discovery, prepareTVItem = async item => item, presentTVItem = item => item,
-  onPlayback = async () => {}, now = Date.now } = {}) {
+  onPlayback = async () => {}, onSelection = () => {}, now = Date.now } = {}) {
   const epoch = id();
   let receiver, commands = [], commandSequence = 0, queue = [], active = null;
   let generation = 0, phase = 'idle', lastError = '', closed = false;
   let work = Promise.resolve();
   let revision = 0;
+  let cancelSelection;
   const online = () => !!receiver && now() - receiver.lastSeen < 10000;
   function restorePending() {
     if (active?.fromQueue && ['resolving', 'preparing', 'loading'].includes(phase) && receiver?.playbackId !== active.playbackId &&
@@ -36,6 +37,8 @@ export function createController({ discovery, prepareTVItem = async item => item
     if (!online()) throw error('The TV is offline. Open Bangumi TV on the TV first.', 409);
     restorePending();
     const job = ++generation;
+    cancelSelection?.();
+    try { cancelSelection = onSelection(entry.selection); } catch { cancelSelection = null; } // Comments never block video.
     commands = commands.filter(command => command.action !== 'play');
     active = { ...entry, fromQueue, playbackId: id() }; phase = 'resolving'; lastError = '';
     const playbackId = active.playbackId;
@@ -55,6 +58,7 @@ export function createController({ discovery, prepareTVItem = async item => item
       } catch (failure) {
         if (job !== generation || closed) return;
         phase = 'error'; lastError = failure.message; revision++;
+        cancelSelection?.(); cancelSelection = null;
         if (fromQueue && queue.length < 100) queue.unshift(entry);
       }
     }).catch(failure => { lastError = failure.message; phase = 'error'; });
@@ -69,6 +73,7 @@ export function createController({ discovery, prepareTVItem = async item => item
       if (!receiver || receiver.clientId !== input.clientId || receiver.bootId !== bootId) {
         restorePending();
         generation++; commands = []; active = null; phase = 'idle'; lastError = '';
+        cancelSelection?.(); cancelSelection = null;
         receiver = { clientId: input.clientId, bootId, session: id() };
       }
       receiver.lastSeen = now(); receiver.version = String(input.version || '').slice(0, 20);
@@ -107,6 +112,7 @@ export function createController({ discovery, prepareTVItem = async item => item
         if (phase === 'error') lastError = String(input.error || 'TV playback failed. Try another source.').slice(0, 300);
       }
       if (active && input.terminal && input.terminal.playbackId === active.playbackId) {
+        cancelSelection?.(); cancelSelection = null;
         active = null; phase = 'idle'; lastError = '';
         if (input.terminal.reason === 'ended' && queue.length) next();
       }
@@ -146,7 +152,7 @@ export function createController({ discovery, prepareTVItem = async item => item
       else if (input.action === 'next') next();
       else if (['pause', 'resume', 'stop', 'seek'].includes(input.action)) {
         if (!online()) throw error('The TV is offline.', 409);
-        if (input.action === 'stop') { restorePending(); generation++; commands = []; active = null; phase = 'idle'; lastError = ''; }
+        if (input.action === 'stop') { cancelSelection?.(); cancelSelection = null; restorePending(); generation++; commands = []; active = null; phase = 'idle'; lastError = ''; }
         if (input.action === 'seek' && ![-10, 10].includes(input.seconds)) throw error('Seek must be −10 or +10 seconds');
         issue(input.action, input.action === 'seek' ? { seconds: input.seconds } : {});
       } else throw error('Unknown controller action');
@@ -154,6 +160,6 @@ export function createController({ discovery, prepareTVItem = async item => item
       return this.state();
     },
     async settled() { await work; }, // Deterministic tests / clean lifecycle.
-    close() { closed = true; generation++; }
+    close() { cancelSelection?.(); cancelSelection = null; closed = true; generation++; }
   };
 }

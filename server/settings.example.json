@@ -1,4 +1,9 @@
 {
+  "danmu": {
+    "enabled": true,
+    "port": 9321,
+    "sources": "bahamut,bilibili,animeko"
+  },
   "dandan": {
     "appId": "",
     "appSecret": ""

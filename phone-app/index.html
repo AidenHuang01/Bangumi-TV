@@ -36,8 +36,9 @@
         <label for="danmaku-offset">时间偏移／秒（正数表示延后）</label>
         <input id="danmaku-offset" type="number" min="-600" max="600" step="0.5" value="0">
         <button id="danmaku-save">应用弹幕设置</button>
-        <h3>官方 Kazumi 弹幕转发（无需 API 密钥）</h3>
-        <p class="hint">后台直接获取新弹幕的桥接仍在开发，当前不会启动 Mac 播放器。可用下面的备用方式，手动选择官方 Kazumi 已缓存的弹幕；请核对番剧和集数。</p>
+        <h3>后台弹幕获取（无需弹弹play API 密钥）</h3>
+        <p class="hint">选集后由 Mac 后台的 danmu_api 获取对应弹幕，准备好后自动交给电视显示。不启动 Mac 播放器、不为弹幕下载视频。获取失败不影响视频，可用下方在线搜索手动纠正匹配。</p>
+        <h3>备用：官方 Kazumi 已有弹幕缓存</h3>
         <button id="kazumi-cache-refresh">读取 Mac 上的 Kazumi 弹幕</button>
         <p id="kazumi-cache-status" class="hint" role="status"></p>
         <div id="kazumi-cache-list"></div>

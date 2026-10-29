@@ -41,6 +41,8 @@ export function createApp({
   kazumiCache = createKazumiCache(),
   automaticCache = kazumiCache,
   acquireKazumiDanmaku,
+  acquireDanmaku = acquireKazumiDanmaku,
+  prefetchDanmaku = () => {},
   autoDanmakuOptions = {},
   recentHistory = createRecentHistory({ file: null }),
   tvCompatibilityOptions = {}
@@ -53,9 +55,9 @@ export function createApp({
     inputURL: id => 'http://127.0.0.1:' + server.address().port + '/stream/' + id
   });
   const controller = createController({ discovery, prepareTVItem: item => tvCompatibility.prepare(item),
-    presentTVItem: item => tvCompatibility.present(item), onPlayback: stream => recentHistory.record(stream) });
+    presentTVItem: item => tvCompatibility.present(item), onPlayback: stream => recentHistory.record(stream), onSelection: prefetchDanmaku });
   const covers = createCovers();
-  const automaticDanmaku = createAutoDanmaku({ ...autoDanmakuOptions, cache: automaticCache, danmaku, acquire: acquireKazumiDanmaku });
+  const automaticDanmaku = createAutoDanmaku({ ...autoDanmakuOptions, cache: automaticCache, danmaku, acquire: acquireDanmaku });
 
   async function body(req, limit = 32768) {
     if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) throw Object.assign(new Error('Use application/json'), { status: 415 });
@@ -256,6 +258,7 @@ export function createApp({
       if (pathname === '/api/health') return json(res, 200, {
         name: 'Bangumi TV POC', version: '0.4.0', playback: 'original', kazumiSearch: true, phoneController: true,
         animeBackend: discovery.engineInfo ? await discovery.engineInfo() : { engine: 'custom' },
+        danmaku: { engine: danmaku.status().engine, configured: danmaku.status().configured },
         tvCompatibility: tvCompatibility.status(), uptimeSeconds: Math.round(process.uptime()), ...metrics
       });
       if (pathname === '/api/providers') return json(res, 200, { providers: await discovery.providers() });

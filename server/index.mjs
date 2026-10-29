@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { createApp } from './app.mjs';
 import { createDiscovery, loadRules } from './lib/discovery.mjs';
 import { startKazumiCore } from './lib/kazumi-client.mjs';
+import { startDanmuService } from './lib/danmu-service.mjs';
+import { createDanmuProvider } from './lib/danmu-provider.mjs';
 
 const port = Number(process.env.PORT || 8787);
 const host = process.env.HOST || '0.0.0.0';
@@ -23,12 +25,24 @@ const kazumiCache = createKazumiCache();
 const automaticCache = createVerifiedKazumiCache(kazumiCache, {
   file: fileURLToPath(new URL('./data/kazumi-auto-cache.json', import.meta.url))
 });
+let danmuService, danmuProvider;
+if (settings.danmu?.enabled !== false) {
+  try {
+    danmuService = await startDanmuService({ port: settings.danmu?.port || 9321, sources: settings.danmu?.sources });
+    danmuProvider = createDanmuProvider(danmuService);
+  } catch (error) { console.error(error.message); } // Video service still starts if comments are unavailable.
+}
+const danmaku = createDanmaku({ ...settings.dandan, core, provider: danmuProvider,
+  coreConfigured: core ? (await core.health()).danmaku?.configured === true : false });
 const app = createApp({ mediaDir: process.env.MEDIA_DIR, sourcesFile: process.env.SOURCES_FILE, discovery, kazumiCache,
-  automaticCache,
+  automaticCache: danmuProvider ? { list: async () => ({ items: [] }) } : automaticCache,
+  acquireDanmaku: danmuProvider?.acquire,
+  prefetchDanmaku: selection => danmaku.status().enabled ? danmuProvider?.prefetch(selection) : undefined,
   // Desktop UI acquisition starts a second video player. It is intentionally
   // disconnected: this Mac must only bridge comments, not play the episode.
-  danmaku: createDanmaku({ ...settings.dandan, core, coreConfigured: core ? (await core.health()).danmaku?.configured === true : false }),
+  danmaku,
   recentHistory: createRecentHistory() });
+app.on('close', () => danmuService?.close());
 app.on('error', error => { console.error(error.message); process.exitCode = 1; discovery.close(); });
 app.listen(port, host, () => {
   console.log(`Bangumi TV POC: http://localhost:${port}/`);

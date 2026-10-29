@@ -57,6 +57,7 @@ requires internet and several GB of free disk space.
 cd /Users/yucheng/workspace/bangumi-tv
 npm install
 npm run setup:kazumi
+npm run setup:danmu
 npm run demo
 TV_IP=10.0.0.53 npm start
 ```
@@ -282,13 +283,36 @@ the video, and has its own show/hide control. Episode changes cancel stale jobs;
 only caches with verified acquisition provenance are eligible for automatic loading.
 Older caches remain available through explicit manual selection.
 
-**Background acquisition of new comments without Mac video playback is not yet
-implemented.** The experimental desktop UI acquisition code is disconnected from
-the production server because it opens a second video player. Do not enable that
-workflow as a substitute for a comment-only bridge. No official credentials are
-extracted or included in this project.
+**Background acquisition now uses a private local `danmu_api` worker.** Selecting
+an episode on the phone starts comment acquisition in parallel with video
+resolution. The TV polls its existing comment endpoint and loads the result
+without restarting playback. Mac video playback, video downloads for danmaku,
+desktop UI automation, and official Kazumi credentials are not used.
 
-#### Forward comments from the official Mac Kazumi app — no gateway API keys
+Run `npm run setup:danmu` once, then start/restart the gateway. Upstream is pinned
+to `huangxd-/danmu_api` commit `4d325e096bbbf0c1ff261a9bfa638f7c58784f60`;
+its original AGPL license remains in `.tools/danmu-api/LICENSE`. Only its request
+handler runs, on `127.0.0.1:9321` behind a random per-start token. Upstream's
+public UI, admin routes and proxy server are not exposed. No TLS checks are
+disabled. Default sources: `bahamut,bilibili,animeko`; hosted fallback and dandan
+sources are not used. Some sources may require their own login or be unavailable
+in your region; no credentials are requested for the default anonymous test.
+
+Optional `server/settings.local.json` settings: `danmu.enabled` (default true),
+`danmu.port` (default 9321), and `danmu.sources`. The token never reaches the phone
+or TV. The phone's online search and full episode picker remain available for
+manual correction. Exact titles/aliases and unique episode matches are required;
+different-year homonyms, sequels and specials are not silently substituted.
+Results are cached in gateway memory for six hours (up to 30 episodes), shared
+across video sources, and refreshed after a gateway restart.
+
+The old experimental desktop UI acquisition code remains disconnected because
+it starts a second player. Do not enable it for this workflow.
+
+#### Optional legacy backup: forward an existing official Kazumi cache
+
+This backup is not needed for automatic `danmu_api` acquisition above. Normal TV
+viewing does not require opening or playing anything in the desktop Kazumi app.
 
 This path runs the **official desktop release**, not our rebuilt core, to obtain
 comments. In Kazumi enable **下载设置 → 缓存弹幕**, open the correct show/source,
