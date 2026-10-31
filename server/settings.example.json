@@ -2,8 +2,10 @@
   "danmu": {
     "enabled": true,
     "port": 9321,
-    "sources": "bahamut,bilibili,animeko"
+    "sources": "dandan,bahamut,bilibili,animeko",
+    "account": ""
   },
+  "kazumiDanmaku": { "enabled": false },
   "dandan": {
     "appId": "",
     "appSecret": ""

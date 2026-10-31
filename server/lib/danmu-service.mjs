@@ -3,15 +3,18 @@ import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { mkdir, open } from 'node:fs/promises';
 
-export async function startDanmuService({ port = 9321, sources = 'bahamut,bilibili,animeko' } = {}) {
+export async function startDanmuService({ port = 9321, sources, credentials } = {}) {
   const token = randomBytes(24).toString('hex');
   const dir = new URL('../data/logs/', import.meta.url);
   await mkdir(dir, { recursive: true });
   const log = await open(new URL('danmu-service.log', dir), 'a', 0o600);
   const child = spawn(process.execPath, [fileURLToPath(new URL('../tools/danmu-service.mjs', import.meta.url))], {
-    stdio: ['ignore', log.fd, log.fd], env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR,
-      BANGUMI_DANMU_TOKEN: token, BANGUMI_DANMU_PORT: String(port), BANGUMI_DANMU_SOURCES: sources, NODE_TLS_REJECT_UNAUTHORIZED: '1' }
+    stdio: ['pipe', log.fd, log.fd], env: { PATH: process.env.PATH, TMPDIR: process.env.TMPDIR,
+      BANGUMI_DANMU_TOKEN: token, BANGUMI_DANMU_PORT: String(port),
+      BANGUMI_DANMU_SOURCES: sources || (credentials ? 'dandan,bahamut,bilibili,animeko' : 'bahamut,bilibili,animeko'), NODE_TLS_REJECT_UNAUTHORIZED: '1' }
   });
+  child.stdin.on('error', () => {}); // A startup failure must not crash the video gateway.
+  child.stdin.end(JSON.stringify(credentials || {})); // Never put passwords in argv, env or logs.
   await log.close();
   let exited = false;
   child.on('exit', () => { exited = true; });
@@ -22,7 +25,9 @@ export async function startDanmuService({ port = 9321, sources = 'bahamut,bilibi
   for (let i = 0; i < 40 && !exited; i++) {
     try {
       const response = await fetch(url + '/health', { headers: { 'X-Bangumi-Danmu': token }, signal: AbortSignal.timeout(1000) });
-      if (response.ok && (await response.json()).engine === 'danmu_api') return { url, token, close() { stop(); process.removeListener('exit', stop); } };
+      const health = await response.json();
+      if (response.ok && health.engine === 'danmu_api') return { url, token, aggregation: health.aggregation,
+        close() { stop(); process.removeListener('exit', stop); } };
     } catch { /* Worker is still importing its dependencies. */ }
     await new Promise(resolve => setTimeout(resolve, 250));
   }

@@ -82,7 +82,8 @@ export function createDanmuProvider({ url, token, fetcher = fetch, now = Date.no
       if (saved && saved.expires > now()) return saved.value;
       const result = await search(title, signal);
       const candidates = result.animes.filter(item => matchDanmuAnime(item, title) &&
-        !/剧场|劇場|电影|電影|真人|OVA|OAD|总集|總集|movie/i.test(item.typeDescription || ''));
+        !/剧场|劇場|电影|電影|真人|OVA|OAD|总集|總集|movie/i.test(item.typeDescription || ''))
+        .sort((a, b) => Number(b.source === 'dandan') - Number(a.source === 'dandan'));
       if (!candidates.length) throw fail('没有找到完全匹配的番剧弹幕；可在手机“弹幕设置”搜索并手动确认。');
       const years = new Set(candidates.map(item => /\((\d{4})\)【/.exec(item.animeTitle)?.[1]).filter(Boolean));
       if (years.size > 1) throw fail('发现不同年份的同名作品，请在手机手动确认弹幕版本。');

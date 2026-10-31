@@ -11,13 +11,14 @@ const anime = { animeId: 123, animeTitle: '葬送的芙莉莲(2023)【动漫】f
 const ids = ['anime-' + 'a'.repeat(32), 'anime-' + 'b'.repeat(32)];
 function fixture(options = {}) {
   const calls = [];
+  const { fetcher: _fetcher, ...providerOptions } = options;
   const provider = createDanmuProvider({ url: 'http://127.0.0.1:9321', token: 'private-token',
     fetcher: async (url, init) => {
       const value = new URL(url); calls.push({ url: value, init });
       if (options.fetcher) return options.fetcher(value, init);
       return Response.json(value.pathname.includes('/search/') ? { animes: [{ ...anime, animeId: 124, animeTitle: '葬送的芙莉莲 第二季(2026)【动漫】from bahamut' }, anime] } :
         value.pathname.includes('/bangumi/') ? { bangumi: { episodes: [{ episodeId: 8, episodeTitle: '【bahamut】 第8集', episodeNumber: '8' }] } } : data);
-    }, ...options });
+    }, ...providerOptions });
   return { provider, calls };
 }
 
@@ -40,6 +41,18 @@ test('headless acquisition fetches search, full episodes and comments; same epis
   assert.ok(calls.every(call => call.url.hostname === '127.0.0.1' && call.init.headers['X-Bangumi-Danmu'] === 'private-token'));
   assert.deepEqual(await provider.acquire({ title: '葬送的芙莉莲', episode: 8 }), first);
   assert.equal(calls.length, 3);
+});
+
+test('automatic acquisition prefers aggregated dandan even if sparse sources arrive first', async () => {
+  const { provider, calls } = fixture({ fetcher: async url => {
+    if (url.pathname.includes('/search/')) return Response.json({ animes: [anime, { ...anime, animeId: 456, source: 'dandan' }] });
+    if (url.pathname.includes('/bangumi/')) return Response.json({ bangumi: { episodes: [{ episodeId: 8, episodeTitle: '第8集' }] } });
+    return Response.json(data);
+  } });
+  const result = await provider.acquire({ title: '葬送的芙莉莲', episode: 8 });
+  assert.match(result.source, /dandan/);
+  assert.ok(calls.some(call => call.url.pathname.endsWith('/bangumi/456')));
+  assert.ok(!calls.some(call => call.url.pathname.endsWith('/bangumi/123')));
 });
 
 test('phone searches use opaque server-owned selections and cannot choose arbitrary URLs or unknown IDs', async () => {

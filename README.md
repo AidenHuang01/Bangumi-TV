@@ -302,48 +302,59 @@ acquisition is needed for this frontend-only update. Existing 0.6.1 widgets must
 be re-signed/reinstalled to receive it; updating server files alone only updates
 the phone/browser preview.
 
-**macOS automatic acquisition now uses the unmodified official Kazumi 2.4.2 app.**
-After TV/phone playback starts, the gateway checks verified comment caches first.
-For a new episode it launches the official app, matches public Bangumi names and
-aliases plus release date, selects an exact-title source, and caches only the
-requested episode. Once complete, parseable `danmaku.json` is available, it forwards
-the comments and quits the official app, verifying that its process stopped.
-It does not wait for the whole video download. The official window may briefly
-appear/play and some video bytes are downloaded during acquisition; this is not a
-headless comment-only API. The Mac must be logged in with existing Accessibility
-permission for `osascript`. The verified 640×860 portrait layout is used, then the
-original window size is restored. No API credentials are read or extracted.
+**Automatic comments now use headless 弹弹play + related Bahamut aggregation.**
+After episode selection, the Mac prefetches comments independently of video
+resolution. An ordinary DandanPlay account signs in through the NipaPlay gateway;
+no developer AppId/AppSecret or official Kazumi release credentials are needed.
+The worker obtains the exact episode's native comments and the gateway-provided
+Bahamut links, applies each link's timing offset, then uses danmu_api's existing
+formatting and exact-time duplicate handling. It does not collapse matching
+comments across an entire minute. Neither Kazumi's GUI nor a Mac video player or
+video download is started. The existing Kazumi core still resolves video sources.
 
-Do not leave the official app open for personal viewing during automation: the
-gateway refuses to take over an existing official process. A failed attempt does
-not stop TV video; use **弹幕 → 重新获取当前集弹幕** on the phone. Retry also replaces
-an old sparse attachment. Switching/stopping playback or disabling comments cancels
-desktop work and exits the owned client. TV 0.6.1 already supports this protocol;
-no TV reinstall is needed. On the phone, refresh the remote page after deployment.
-
-Cold launches poll official process/window readiness before preparing its UI;
-only transient window-creation races are retried, not permission/layout failures
-or download clicks. Failure logs include a safe action/error category rather
-than arbitrary UI output. The verified cache registry is refreshed during use,
-so a separately validated export can be approved without another gateway restart.
-Old/unverified caches are still never blanket-trusted.
-
-The private local `danmu_api` worker remains available for **manual backup search**.
-It is not automatically chosen just because a small nonzero result was found.
-To use it as the automatic provider instead, set `kazumiDanmaku.enabled: false`
-in `server/settings.local.json` and restart the gateway.
+Aggregated dandan results are preferred over sparse standalone sources. Verified
+official-client caches are used only if online acquisition fails; old files do
+not preempt richer online comments. No GUI fallback is automatic. The old desktop
+acquirer remains an explicit opt-in (`kazumiDanmaku.enabled: true`), default false.
+Online failures never interrupt video; the phone's **重新获取当前集弹幕** retries
+and replaces an old sparse attachment. TV 0.6.2 uses the same HTTP protocol, so no
+TV reinstall is required; refresh the phone page after backend deployment.
 
 Run `npm run setup:danmu` once, then start/restart the gateway. Upstream is pinned
 to `huangxd-/danmu_api` commit `4d325e096bbbf0c1ff261a9bfa638f7c58784f60`;
 its original AGPL license remains in `.tools/danmu-api/LICENSE`. Only its request
 handler runs, on `127.0.0.1:9321` behind a random per-start token. Upstream's
 public UI, admin routes and proxy server are not exposed. No TLS checks are
-disabled. Default sources: `bahamut,bilibili,animeko`; hosted fallback and dandan
-sources are not used. Some sources may require their own login or be unavailable
-in your region; no credentials are requested for the default anonymous test.
+disabled. With an account, default sources are `dandan,bahamut,bilibili,animeko`;
+without one, anonymous `bahamut,bilibili,animeko` remain available. The unrelated
+hosted fallback is disabled. Our account adapter replaces upstream's dandan
+network calls: only the fixed HTTPS NipaPlay gateway receives credentials, auth
+redirects are not followed, and the plaintext HTTP backup is never used. Signed
+CDN URLs are fetched immediately without account headers and never cached or
+logged. Bahamut comments are fetched only for the associated numeric video ID.
+
+Account privacy: NipaPlay is a third-party gateway, not DandanPlay itself; your
+account password passes through it. Use only an account you authorize for this.
+Configure `danmu.account` in ignored `server/settings.local.json`. By default the
+password is read from the macOS login Keychain service `local.bangumitv.dandanplay`:
+
+```sh
+# -w must be last: enter the password privately at the prompt, not in argv.
+security add-generic-password -a YOUR_DANDAN_ACCOUNT -s local.bangumitv.dandanplay -w
+```
+
+Where background Keychain access is unavailable, set `danmu.credentialStore` to
+`file` and use ignored `server/data/credentials/dandanplay.json` containing the
+account/password object. Its directory must be private (700), its file owned by
+the current user and mode 600; unsafe files are rejected. Passwords are passed to
+the isolated worker through stdin, never process arguments/environment, phone/TV
+responses or Git. Do not put real credentials in the example settings file.
+If Xfinity filters the gateway, allow only its domain in the Xfinity app; a
+temporary Allow Access may expire. No system proxy/DNS/TLS changes are made.
 
 Optional `server/settings.local.json` settings: `danmu.enabled` (default true),
-`danmu.port` (default 9321), and `danmu.sources`. The token never reaches the phone
+`danmu.port` (default 9321), `danmu.sources`, `danmu.account` and
+`danmu.credentialStore` (`keychain` or `file`). The token never reaches the phone
 or TV. The phone's online search and full episode picker remain available for
 manual correction. Exact titles/aliases and unique episode matches are required;
 different-year homonyms, sequels and specials are not silently substituted.

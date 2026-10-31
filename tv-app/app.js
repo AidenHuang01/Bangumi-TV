@@ -18,7 +18,7 @@
       danmakuSettings = data;
       danmaku.configure({ enabled: data.enabled !== false && danmakuLocalEnabled, offset: data.offset, opacity: data.opacity }); danmakuVersion = data.version;
       $('danmaku-status').textContent = data.enabled === false ? '弹幕已在手机端关闭。' : !danmakuLocalEnabled ? '本电视已隐藏弹幕。' :
-        data.count ? '弹幕已加载：' + data.count + ' 条 · 暂停、快进自动同步' : data.automatic && data.automatic.message || '正在等待官方 Kazumi 弹幕，视频继续播放…';
+        data.count ? '弹幕已加载：' + data.count + ' 条 · 暂停、快进自动同步' : data.automatic && data.automatic.message || '正在后台获取聚合弹幕，视频继续播放…';
     });
   }
   var server = '';
