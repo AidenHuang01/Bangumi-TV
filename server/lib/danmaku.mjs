@@ -79,7 +79,7 @@ export function createDanmaku({ appId = process.env.DANDAN_APP_ID || '', appSecr
   return {
     status() { return { configured: configured || automatic?.configured === true, manualConfigured: configured,
       engine: automatic?.engine || provider?.engine || (useCore ? 'kazumi' : 'dandanplay'), ...settings,
-      contentFilter: { enabled: true, mode: 'local-rules' },
+      contentFilter: { enabled: true, mode: 'local-rules', ...moderation.policy },
       message: automatic?.message || (provider ? 'danmu_api 已连接：选集后后台获取弹幕，Mac 不播放视频。' : configured ? (useCore ? 'Kazumi danmaku connected. Choose a show and episode.' : 'DanDanPlay configured. Choose an episode match.')
         : useCore ? '源码构建未配置在线 API。下方“官方 Kazumi 弹幕转发”可免密钥读取 Mac 上的官方客户端缓存。'
           : 'Online danmaku awaits API keys. XML / JSON import is available.') }; },

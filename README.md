@@ -372,16 +372,26 @@ Clients receive only aggregate `filtering` counts, never rejected text. No remot
 moderation service/API fee or frontend update is required. An entirely blocked
 episode is a valid empty result, not a failed download/refetch loop.
 
+The default `balanced` profile distinguishes casual exclamations from attacks:
+`卧槽，这集真好看` is retained, while targeted abuse, explicit sexual content
+and misogyny are removed. `strict` additionally blocks casual Chinese/English
+profanity. Narrow span-local exceptions cover explicit counterspeech/negation,
+medical context and literal animal references; another abusive span in the same
+row is still blocked. There is no whole-comment allowlist or AI classifier.
+
 Rules normalize full-width text, relevant Traditional Chinese variants, zero-width
-characters and common punctuation/leet obfuscation. Ambiguous ordinary words use
-targeted patterns, and regression tests preserve everyday anime/romance,
-women's-rights discussion, family dialogue, USB/SBS, buses and plot criticism.
-This is a local rule-based filter, not complete semantic moderation: novel slang
-can be missed and quoted/discussed slurs can still be blocked. Server owners can
-append literal phrases with `danmakuFilter.extraBlockedWords` in the ignored
-local settings (at most 200 phrases, 80 characters each), then restart the server.
+characters, common punctuation/leet and selected mixed-Latin Unicode lookalikes.
+Literal custom phrases take precedence over all exceptions. Server owners can set
+`danmakuFilter.profile` (`balanced` or `strict`) and append
+`danmakuFilter.extraBlockedWords` in the ignored local settings (at most 200
+phrases, 80 characters each), then restart the server.
 Phone/TV settings cannot turn off the backend filter. Upstream/downloaded files
 are not rewritten; filtering occurs when comments are attached for delivery.
+See [filter policy, limits and evaluation](docs/danmaku-filter.md). Run
+`npm run benchmark:danmaku -- --baseline 05d68dd` for offline regressions, or
+append `--live` for a separate read-only Lycoris Recoil episode-1 acquisition.
+The live benchmark requires existing private credentials, uses loopback port
+9322, stops its temporary worker, and never changes TV playback or prints text.
 
 #### Manual backup: forward an existing official Kazumi cache
 

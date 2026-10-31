@@ -4,14 +4,15 @@ import { createDanmakuFilter } from '../lib/danmaku-filter.mjs';
 import { createDanmaku } from '../lib/danmaku.mjs';
 import { createAutoDanmaku } from '../lib/auto-danmaku.mjs';
 import { createApp } from '../app.mjs';
+import { moderationCases } from './fixtures/danmaku-moderation-cases.mjs';
 
 const filter = createDanmakuFilter();
 const blocked = {
   sexual: ['发色情网站', '求番号', '口 交', '裸聊', '想操她', '想干她', '我要强奸你', 'ＰＯＲＮ', 'h.e.n.t.a.i', 'blowjob'],
   misogyny: ['这人是个婊子', '她是綠茶婊', '贱 货', '蕩婦', '死肥婆', '她就是个公交车', '女人只配生孩子',
     '女的都是低等生物', 'b1tch', 'b!tch', 'bítch', 's.l.u.t', 'wh0re', 'ＣＵＮＴ'],
-  abuse: ['你是傻逼', '傻@逼', '傻\u200b逼', '腦殘', '他媽的', '操你妈', '日你', 'ＳＢ', 'S B', 'n.m.s.l',
-    'shabi', 'caonima', 'f.u.c.k', 'f u c k', 'fuuuck', 'ＦＵＣＫＩＮＧ', 'hello\nfuck', '<b>fuck</b>', 'sh1t'],
+  abuse: ['你是傻逼', '傻@逼', '傻\u200b逼', '腦殘', '操你妈', '日你', 'ＳＢ', 'S B', 'n.m.s.l',
+    'shabi', 'caonima'],
   personalAttack: ['你真是个废物', '你就是垃圾', '作者是个蠢货', '她长得真恶心', '你应该去死',
     '你全家暴毙', 'you are an idiot', 'kill yourself']
 };
@@ -20,6 +21,61 @@ for (const [category, examples] of Object.entries(blocked)) {
     for (const text of examples) assert.equal(filter.classify(text), category, JSON.stringify(text));
   });
 }
+
+for (const group of moderationCases) {
+  test('balanced regression corpus: ' + group.name, () => {
+    for (const text of group.texts) assert.equal(!!filter.classify(text), group.blocked, JSON.stringify(text));
+  });
+}
+
+test('balanced tolerates casual exclamations; strict is server-only and explicit', () => {
+  const strict = createDanmakuFilter({ profile: 'strict' });
+  for (const text of ['卧槽, 这么功利', '他媽的太精彩了', '妈的，好感动', 'f.u.c.k', 'f u c k', 'fuuuck',
+    'ＦＵＣＫＩＮＧ', 'hello\nfuck', '<b>fuck</b>', 'sh1t']) {
+    assert.equal(filter.classify(text), null, text); assert.equal(strict.classify(text), 'abuse', text);
+  }
+  for (const profile of [false, 'off', 'none', 'ai']) assert.throws(() => createDanmakuFilter({ profile }), /profile/);
+  assert.deepEqual(filter.policy, { version: '2', profile: 'balanced' });
+});
+
+test('explanations contain stable rule identifiers but no original or matched text', () => {
+  assert.deepEqual(filter.inspect('她是个婊子'), { blocked: true, category: 'misogyny', ruleId: 'misogyny.slur', reason: '明确的性别贬损或侮辱词' });
+  assert.deepEqual(filter.inspect('剧情好看'), { blocked: false, category: null, ruleId: null, reason: null });
+  assert.equal(JSON.stringify(filter.inspect('你是傻逼')).includes('傻逼'), false);
+});
+
+test('duplicate rows are counted independently and decisions do not leak between calls', () => {
+  const comments = Array.from({ length: 20000 }, (_, i) => ({ time: i, text: i % 2 ? '剧情好看' : '你是傻逼' }));
+  const result = filter.apply(comments);
+  assert.equal(result.stats.blockedCount, 10000); assert.equal(result.comments.length, 10000);
+  for (let i = 0; i < 3; i++) assert.equal(filter.classify('b!tch'), 'misogyny');
+  assert.equal(filter.apply([{ time: 1, text: '正常弹幕' }]).stats.blockedCount, 0);
+});
+
+test('explicit slurs survive common separator/Unicode obfuscations without rewriting allowed text', () => {
+  for (const original of ['傻逼', '婊子', '裸聊', 'nmsl', 'bitch', 'porn']) {
+    for (const separator of [' ', '.', ',', '！', '🐶', '\u200b', '\u2060', '\u0301', '<i></i>']) {
+      assert.ok(filter.classify([...original].join(separator)), original + ' with ' + separator);
+    }
+  }
+});
+
+test('narrow exceptions still find subsequent abusive spans and strict preserves family dialogue', () => {
+  assert.equal(filter.classify('不要叫她婊子婊子'), 'misogyny');
+  assert.equal(createDanmakuFilter({ extraBlockedWords: ['卧槽'] }).classify('卧槽好看'), 'custom');
+  const strict = createDanmakuFilter({ profile: 'strict' });
+  for (const text of ['他妈妈的配音很好', '妈妈的蛋糕', '她不是婊子', '科普阴道', "don't kill yourself"]) {
+    assert.equal(strict.classify(text), null, text);
+  }
+});
+
+test('server policy cannot be relaxed by phone/TV settings or untrusted import fields', () => {
+  const d = createDanmaku({ filterOptions: { profile: 'strict' } });
+  d.settings({ profile: 'balanced', filterOptions: { profile: 'balanced' }, contentFilter: { enabled: false } });
+  d.import('video', JSON.stringify([{ time: 1, text: '卧槽', safe: true, category: 'allowed' }]));
+  assert.deepEqual(d.status().contentFilter, { enabled: true, mode: 'local-rules', version: '2', profile: 'strict' });
+  assert.equal(d.read('video').count, 0);
+});
 
 test('ordinary anime, romance, women, mothers, transport and plot criticism are preserved', () => {
   for (const text of ['葬送的芙莉莲', '死亡笔记', '莉可丽丝', '她妈妈的声音真温柔', '他妈妈的配音很好',
