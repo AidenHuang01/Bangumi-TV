@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { JSDOM } from 'jsdom';
 import { requestUpstream } from './upstream.mjs';
 import { readBody } from './discovery.mjs';
+import { createDanmakuFilter } from './danmaku-filter.mjs';
 
 const fail = message => Object.assign(new Error(message), { status: 400 });
 export function parseDanmaku(content) {
@@ -38,8 +39,9 @@ export function parseDanmaku(content) {
 }
 
 export function createDanmaku({ appId = process.env.DANDAN_APP_ID || '', appSecret = process.env.DANDAN_APP_SECRET || '', fetcher = fetch,
-  core, coreConfigured = false, provider, automatic } = {}) {
+  core, coreConfigured = false, provider, automatic, filterOptions } = {}) {
   const files = new Map();
+  const moderation = createDanmakuFilter(filterOptions);
   let revision = 0, settings = { enabled: true, offset: 0, opacity: 0.8 };
   const useCore = !!core && (coreConfigured || !(appId && appSecret));
   const configured = !!provider || (useCore ? coreConfigured : !!(appId && appSecret));
@@ -69,13 +71,15 @@ export function createDanmaku({ appId = process.env.DANDAN_APP_ID || '', appSecr
   }
   function put(streamId, comments, source) {
     if (!comments.length) throw fail('No usable comments in this file');
-    files.set(streamId, { comments, source, revision: ++revision });
+    const filtered = moderation.apply(comments);
+    files.set(streamId, { comments: filtered.comments, filtering: filtered.stats, source, revision: ++revision });
     while (files.size > 30) files.delete(files.keys().next().value);
-    return { count: comments.length, source };
+    return { count: filtered.comments.length, source, filtering: filtered.stats };
   }
   return {
     status() { return { configured: configured || automatic?.configured === true, manualConfigured: configured,
       engine: automatic?.engine || provider?.engine || (useCore ? 'kazumi' : 'dandanplay'), ...settings,
+      contentFilter: { enabled: true, mode: 'local-rules' },
       message: automatic?.message || (provider ? 'danmu_api 已连接：选集后后台获取弹幕，Mac 不播放视频。' : configured ? (useCore ? 'Kazumi danmaku connected. Choose a show and episode.' : 'DanDanPlay configured. Choose an episode match.')
         : useCore ? '源码构建未配置在线 API。下方“官方 Kazumi 弹幕转发”可免密钥读取 Mac 上的官方客户端缓存。'
           : 'Online danmaku awaits API keys. XML / JSON import is available.') }; },
@@ -89,6 +93,7 @@ export function createDanmaku({ appId = process.env.DANDAN_APP_ID || '', appSecr
       const entry = files.get(streamId);
       const current = String(revision) + ':' + (entry?.revision || 0);
       return { ...this.status(), version: current, source: entry?.source || null, count: entry?.comments.length || 0,
+        filtering: entry?.filtering || null,
         ...(version === current ? { unchanged: true } : { comments: entry?.comments || [] }) };
     },
     import(streamId, content, source = 'Imported file') { return put(streamId, parseDanmaku(content), source); },

@@ -6,6 +6,7 @@
     "account": ""
   },
   "kazumiDanmaku": { "enabled": false },
+  "danmakuFilter": { "extraBlockedWords": [] },
   "dandan": {
     "appId": "",
     "appSecret": ""

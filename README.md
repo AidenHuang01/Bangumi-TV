@@ -361,6 +361,28 @@ different-year homonyms, sequels and specials are not silently substituted.
 Results are cached in gateway memory for six hours (up to 30 episodes), shared
 across video sources, and refreshed after a gateway restart.
 
+#### Backend comment-content filtering
+
+Before storing/delivering episode comments, the Mac filters explicit sexual
+content, misogynistic slurs, profanity and targeted personal attacks. The same
+mandatory sink covers online providers, native Kazumi/API results, verified
+local caches and manual XML/JSON imports, for both TV and phone. Matching rows
+are removed as a whole; timestamps, color and text of retained rows are unchanged.
+Clients receive only aggregate `filtering` counts, never rejected text. No remote
+moderation service/API fee or frontend update is required. An entirely blocked
+episode is a valid empty result, not a failed download/refetch loop.
+
+Rules normalize full-width text, relevant Traditional Chinese variants, zero-width
+characters and common punctuation/leet obfuscation. Ambiguous ordinary words use
+targeted patterns, and regression tests preserve everyday anime/romance,
+women's-rights discussion, family dialogue, USB/SBS, buses and plot criticism.
+This is a local rule-based filter, not complete semantic moderation: novel slang
+can be missed and quoted/discussed slurs can still be blocked. Server owners can
+append literal phrases with `danmakuFilter.extraBlockedWords` in the ignored
+local settings (at most 200 phrases, 80 characters each), then restart the server.
+Phone/TV settings cannot turn off the backend filter. Upstream/downloaded files
+are not rewritten; filtering occurs when comments are attached for delivery.
+
 #### Manual backup: forward an existing official Kazumi cache
 
 Automatic loading only trusts files verified by the current exact-title workflow.

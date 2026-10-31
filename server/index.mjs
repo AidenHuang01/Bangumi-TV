@@ -41,7 +41,7 @@ const acquireOfficial = officialEnabled ? createKazumiAcquirer({ cache: kazumiCa
   onCache: item => automaticCache.approve(item),
   onEvent: event => console.log('[official-danmaku] ' + JSON.stringify({ time: new Date().toISOString(), ...event }))
 }) : undefined;
-const danmaku = createDanmaku({ ...settings.dandan, core, provider: danmuProvider,
+const danmaku = createDanmaku({ ...settings.dandan, core, provider: danmuProvider, filterOptions: settings.danmakuFilter,
   automatic: officialEnabled ? { engine: 'official-kazumi', configured: true,
     message: '官方 Kazumi 自动弹幕：播放后获取对应集，文件就绪后转发至电视／手机并退出 Mac 客户端。获取期间客户端可能短暂显示播放画面。' }
     : danmuService?.aggregation ? { engine: 'danmu_api', configured: true,
