@@ -452,13 +452,23 @@ it does not provide standalone background acquisition. See https://doc.dandanpla
 
 ### Daily source reports
 
-`npm run audit:daily` checks **each enabled source against ten fixed titles**, using
-episode 1 and at most two playback roads per title. It uses a separate original
+`npm run audit:daily` checks **each enabled source against the ten most recently
+played distinct titles**, in the same newest-first order as the phone's history.
+If fewer than ten are available, the existing default titles fill the remaining
+slots in order, skipping duplicates (including known default-title aliases).
+History is read once at the start; all providers use the same snapshot. Missing
+history uses the defaults; unreadable/invalid history also falls back, with a
+warning in the report, without rewriting the history file.
+Tests still use episode 1 and at most two playback roads per title, not the
+last-watched episode/provider. It uses a separate original
 Kazumi worker (8792) and loopback gateway (8785); it never sends TV commands.
 Reports update atomically under ignored `server/data/reports/`, contain stage/
 error/timing/byte-probe results, and are visible on the phone's **源测试** tab.
 A failed catalogue lookup counts as a failed title check, not a successful stream.
 An interrupted run is marked failed and remains inspectable. Runs cannot overlap.
+Reports record the selected titles and whether each came from history or defaults.
+Preview targets without starting playback probes or a Kazumi worker:
+`npm run audit:rules -- --daily --list-targets`.
 
 `npm run schedule:install` installs the macOS user LaunchAgent
 `dev.forgetech.bangumi-source-audit` at **05:00 America/Los_Angeles**. The installer

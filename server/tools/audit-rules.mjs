@@ -5,11 +5,19 @@ import path from 'node:path';
 import { startKazumiCore, kazumiCommit } from '../lib/kazumi-client.mjs';
 import { createDiscovery } from '../lib/discovery.mjs';
 import { createApp } from '../app.mjs';
-import { auditCases, dailyAuditCases, selectAuditTitle, selectAuditEpisode } from './audit-cases.mjs';
+import { auditCases, loadDailyAuditCases, preferredAuditRoad, selectAuditTitle, selectAuditEpisode } from './audit-cases.mjs';
+import { createRecentHistory } from '../lib/recent-history.mjs';
 
 const args = process.argv.slice(2);
-const cases = args.includes('--daily') ? dailyAuditCases : auditCases;
 const option = (name, fallback) => args.includes(name) ? args[args.indexOf(name) + 1] : fallback;
+const { cases, targetSelection } = args.includes('--daily') ? await loadDailyAuditCases({
+  ...(args.includes('--history-file') ? { history: createRecentHistory({ file: path.resolve(option('--history-file')) }) } : {})
+}) : { cases: auditCases, targetSelection: { strategy: 'fixed-smoke-tests' } };
+if (targetSelection.warning) console.warn(targetSelection.warning);
+if (args.includes('--list-targets')) {
+  console.log(JSON.stringify({ expectedPerProvider: cases.length, targetSelection, targets: cases }, null, 2));
+  process.exit(0);
+}
 const directory = path.resolve(option('--rules-dir', '.tools/KazumiRules-availability'));
 const reportFile = path.resolve(option('--report', 'reports/2026-10-10-rule-availability.json'));
 const filter = option('--providers', '').split(',').filter(Boolean);
@@ -27,6 +35,7 @@ const rules = await Promise.all(index.filter(item => !filter.length || filter.in
 }));
 if (!rules.length || filter.some(id => !rules.some(rule => rule.id === id))) throw new Error('Unknown providers');
 const report = { startedAt: new Date().toISOString(), status: 'running', timeZone: 'America/Los_Angeles', expectedPerProvider: cases.length, engine: 'kazumi', kazumiCommit,
+  targetSelection, targets: cases.map(({ query, origin }) => ({ query, origin })),
   rulesDirectory: path.basename(directory), maxRoads, methodology: 'First episode; real Kazumi search/chapters/native parser, validated stream and isolated Mac gateway byte probe. Not physical-TV decoding or full-episode coverage.',
   providers: rules.map(rule => ({ id: rule.id, name: rule.name, version: rule.version, cases: [] })) };
 let saving = Promise.resolve();
@@ -87,7 +96,7 @@ async function probe(item) {
 }
 try {
   await pool(rules.flatMap((rule, providerIndex) => cases.map((testCase, caseIndex) => async () => {
-    const result = { query: testCase.query, stage: 'search', outcome: 'failed', attempts: [] };
+    const result = { query: testCase.query, origin: testCase.origin, stage: 'search', outcome: 'failed', attempts: [] };
     report.providers[providerIndex].cases[caseIndex] = result;
     try {
       const items = await core.search(rule, testCase.query);
@@ -109,7 +118,7 @@ try {
         const selection = selections.get(rule.id + ':' + caseIndex);
         if (!selection) continue;
         const available = selection.roads.map((road, index) => ({ road, index })).filter(item => item.road.episodes.length);
-        const preferred = rule.id === 'AGE' ? [3, 3, 2, 4][caseIndex] : undefined;
+        const preferred = preferredAuditRoad(rule.id, cases[caseIndex]);
         available.sort((a, b) => Number(b.index === preferred) - Number(a.index === preferred));
         result.outcome = 'failed'; result.stage = 'resolve';
         for (const { road, index } of available.slice(0, maxRoads)) {
