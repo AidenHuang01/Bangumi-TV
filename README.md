@@ -357,12 +357,16 @@ responses are merged without counting identical raw rows twice; existing exact-t
 deduplication still applies, not minute-wide thinning. Either channel failing
 does not discard the other's data, but no path promises every historical comment.
 Current production mode is visible in `/api/controller/danmaku` as `connection`.
-`npm run benchmark:danmaku-sources` runs an explicit read-only two-episode
-comparison on isolated ports 9322/9323 and prints counts/timing, not comment text
-or signed URLs. It requires both existing account credentials and application
-credentials, leaves production TV playback unchanged, and stops its own workers.
-API access remains subject to your application's permissions/quota; this comparison
-is not part of nightly video-source audits or a bulk comment crawler.
+Live danmaku testing is disabled to protect the application's daily quota.
+`npm run benchmark:danmaku-sources` is now a fail-closed compatibility stub, not
+an online comparison. Never test by calling production comment/search endpoints,
+starting temporary comment workers, or re-fetching an episode. Use mocks or an
+existing local comment file; normal user playback continues to use the API.
+`npm test` preloads a network guard (external networks and known production ports
+are blocked); Node test-context guards also reject real clients/worker startup
+and real application/account credential loading. Fake injected fetchers and
+temporary test credentials remain supported. Daily video-source audits explicitly
+disable comment credentials/acquisition and do not consume the danmaku quota.
 
 Account privacy: NipaPlay is a third-party gateway, not DandanPlay itself; your
 account password passes through it. Use only an account you authorize for this.
@@ -420,9 +424,9 @@ Phone/TV settings cannot turn off the backend filter. Upstream/downloaded files
 are not rewritten; filtering occurs when comments are attached for delivery.
 See [filter policy, limits and evaluation](docs/danmaku-filter.md). Run
 `npm run benchmark:danmaku -- --baseline 05d68dd` for offline regressions, or
-append `--live` for a separate read-only Lycoris Recoil episode-1 acquisition.
-The live benchmark requires existing private credentials, uses loopback port
-9322, stops its temporary worker, and never changes TV playback or prints text.
+`npm run benchmark:danmaku -- --file /absolute/path/to/existing-comments.json`
+to time the filter on an existing local XML/JSON file. No credentials are read
+and no service is contacted. The old `--live` flag is rejected before execution.
 
 #### Manual backup: forward an existing official Kazumi cache
 

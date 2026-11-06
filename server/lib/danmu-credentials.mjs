@@ -1,10 +1,13 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { lstat, readFile } from 'node:fs/promises';
+import { assertDanmakuNetworkAllowed } from './danmaku-network-policy.mjs';
 
 export const danmuKeychainService = 'local.bangumitv.dandanplay';
+const defaultRun = promisify(execFile);
 
 async function readPrivateCredential() {
+  assertDanmakuNetworkAllowed();
   const file = new URL('../data/credentials/dandanplay.json', import.meta.url);
   const info = await lstat(file);
   if (!info.isFile() || (info.mode & 0o077) || info.size > 8192 || info.uid !== process.getuid?.()) throw new Error('Unsafe credential permissions');
@@ -12,7 +15,7 @@ async function readPrivateCredential() {
 }
 
 export async function loadDanmuCredentials({ account, store = 'keychain', platform = process.platform,
-  run = promisify(execFile), readPrivate = readPrivateCredential } = {}) {
+  run = defaultRun, readPrivate = readPrivateCredential } = {}) {
   if (!account) return undefined;
   if (store === 'file') {
     try {
@@ -25,6 +28,7 @@ export async function loadDanmuCredentials({ account, store = 'keychain', platfo
   if (typeof account !== 'string' || account.length > 200 || platform !== 'darwin') {
     throw new Error('弹幕账号需要在 Mac 钥匙串中配置。');
   }
+  if (run === defaultRun) assertDanmakuNetworkAllowed();
   try {
     const { stdout } = await run('/usr/bin/security', ['find-generic-password', '-s', danmuKeychainService, '-a', account, '-w'],
       { encoding: 'utf8', timeout: 5000, maxBuffer: 4096 });

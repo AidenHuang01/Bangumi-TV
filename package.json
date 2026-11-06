@@ -12,7 +12,7 @@
     "setup:kazumi": "node scripts/setup-kazumi.mjs",
     "setup:danmu": "node scripts/setup-danmu.mjs",
     "demo": "node server/tools/make-demo.mjs",
-    "test": "node --test server/test/*.test.mjs tv-app/test/*.test.mjs phone-app/test/*.test.mjs",
+    "test": "node --import ./server/test/network-guard.mjs --test server/test/*.test.mjs tv-app/test/*.test.mjs phone-app/test/*.test.mjs",
     "smoke:anime": "node server/tools/smoke-anime.mjs",
     "audit:rules": "node server/tools/audit-rules.mjs",
     "audit:daily": "node scripts/daily-audit.mjs",

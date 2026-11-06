@@ -7,6 +7,7 @@ import { createDiscovery } from '../lib/discovery.mjs';
 import { createApp } from '../app.mjs';
 import { auditCases, loadDailyAuditCases, preferredAuditRoad, selectAuditTitle, selectAuditEpisode } from './audit-cases.mjs';
 import { createRecentHistory } from '../lib/recent-history.mjs';
+import { createDanmaku } from '../lib/danmaku.mjs';
 
 const args = process.argv.slice(2);
 const option = (name, fallback) => args.includes(name) ? args[args.indexOf(name) + 1] : fallback;
@@ -45,7 +46,8 @@ const save = () => {
 };
 const core = await startKazumiCore({ rules, port: Number(option('--core-port', '8790')) });
 const discovery = createDiscovery({ core, rules });
-const server = createApp({ discovery });
+// Video probes have no danmaku credentials, acquisition, or prefetch callbacks.
+const server = createApp({ discovery, danmaku: createDanmaku({ appId: '', appSecret: '' }) });
 try {
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(Number(option('--port', '8788')), '127.0.0.1', resolve); });
 } catch (error) { await discovery.close(); throw error; }

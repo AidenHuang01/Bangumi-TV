@@ -1,5 +1,9 @@
 # Official 弹弹play application integration — 2026-11-05
 
+**Historical checks only.** After these checks, the owner prohibited quota-consuming
+danmaku tests. Live comparisons and `--live` are now disabled. Do not re-fetch
+these episodes for validation; use mocks or already available local files.
+
 Personal, non-commercial Bangumi-TV POC verification. No credentials, signed CDN
 URLs, raw comment dumps or account identifiers are included in this report.
 
@@ -54,7 +58,7 @@ Counts and latency are snapshots, not service-level or completeness guarantees.
   calculation, no OAuth/no CDN credential forwarding, redirect/size/business error
   handling, combined native/related results, channel failures and old TV/phone tests.
 - Root `.env` remains git-ignored/untracked and was restricted to mode 600.
-- Reproduce selectively: `npm run benchmark:danmaku-sources`. This uses two
-  user-selected representative episodes, not scheduled crawling or quota bypass.
+- The earlier `npm run benchmark:danmaku-sources` live comparison is now disabled;
+  the figures above are a historical snapshot, not a command to re-run.
 - Official usage/limits: [API guide](https://doc.dandanplay.com/open/),
   [permissions and quota announcements](https://doc.dandanplay.com/open/changelog.html).

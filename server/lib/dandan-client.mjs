@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { readDanmuJson } from './nipaplay-client.mjs';
+import { assertDanmakuNetworkAllowed } from './danmaku-network-policy.mjs';
 
 const base = 'https://api.dandanplay.net';
 const userAgent = 'Bangumi-TV POC/0.4 (https://github.com/AidenHuang01/Bangumi-TV)';
@@ -14,6 +15,7 @@ const validId = id => {
 export function createDandanClient({ appId, appSecret, fetcher = fetch, now = Date.now } = {}) {
   if (!appId || !appSecret) throw fail('官方弹弹play应用凭证尚未配置。');
   async function api(path, params = {}) {
+    if (fetcher === globalThis.fetch) assertDanmakuNetworkAllowed();
     const timestamp = String(Math.floor(now() / 1000));
     let response;
     try {

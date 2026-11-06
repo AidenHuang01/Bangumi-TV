@@ -3,6 +3,7 @@ import { JSDOM } from 'jsdom';
 import { requestUpstream } from './upstream.mjs';
 import { readBody } from './discovery.mjs';
 import { createDanmakuFilter } from './danmaku-filter.mjs';
+import { assertDanmakuNetworkAllowed } from './danmaku-network-policy.mjs';
 
 const fail = message => Object.assign(new Error(message), { status: 400 });
 export function parseDanmaku(content) {
@@ -47,6 +48,7 @@ export function createDanmaku({ appId = process.env.DANDAN_APP_ID || '', appSecr
   const configured = !!provider || (useCore ? coreConfigured : !!(appId && appSecret));
   async function api(path, params = {}) {
     if (!configured) throw fail('Add DANDAN_APP_ID and DANDAN_APP_SECRET on the Mac to enable online danmaku.');
+    if (fetcher === globalThis.fetch) assertDanmakuNetworkAllowed();
     const timestamp = String(Math.floor(Date.now() / 1000));
     const signature = createHash('sha256').update(appId + timestamp + path + appSecret).digest('base64');
     const response = await fetcher('https://api.dandanplay.net' + path + '?' + new URLSearchParams(params), {

@@ -67,10 +67,16 @@ episode after deployment.
 ```sh
 npm test
 npm run benchmark:danmaku -- --baseline 05d68dd
-npm run benchmark:danmaku -- --live --baseline 05d68dd
+npm run benchmark:danmaku -- --file /absolute/path/to/existing-comments.json --baseline 05d68dd
 ```
 
-The offline command uses hand-authored Chinese/English minimal pairs, not a
+All danmaku tests/benchmarks are offline to protect the daily API quota. `--live` and the
+former source-comparison command refuse execution; no application/account secrets
+are loaded for tests. A local XML/JSON file can be read for filtering/timing without
+refetching an episode. The historical live measurements below predate this policy
+and must not be automatically repeated.
+
+The fixture command uses hand-authored Chinese/English minimal pairs, not a
 representative sample or a held-out public benchmark. Cases were developed with
 the rules, so **do not interpret the results as production precision/recall**.
 Separate tests cover separator/Unicode variations, strict policy, rule explanations,

@@ -1,3 +1,5 @@
+import { assertDanmakuNetworkAllowed } from './danmaku-network-policy.mjs';
+
 const gateway = 'https://nipaplay.aimes-soft.com/dandanplay';
 const userAgent = 'LogVar Danmu API/1.21.7 (Bangumi-TV POC)';
 const fail = message => Object.assign(new Error(message), { publicMessage: message });
@@ -25,6 +27,7 @@ export function createNipaplayClient({ account, password, fetcher = fetch, now =
   if (!account || !password) throw fail('弹幕账号尚未配置。');
   let token, expires = 0, login;
   async function request(path, { authenticated = false, method = 'GET', body } = {}) {
+    if (fetcher === globalThis.fetch) assertDanmakuNetworkAllowed();
     try {
       return await fetcher(gateway + path, { method, redirect: 'manual', signal: AbortSignal.timeout(15000),
         headers: { Accept: 'application/json', 'User-Agent': userAgent, ...(body ? { 'Content-Type': 'application/json' } : {}),

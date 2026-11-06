@@ -28,7 +28,8 @@ try {
   console.log('Source audit started:', startedAt);
   const result = await new Promise(resolve => {
     child = spawn(process.execPath, [path.join(root, 'server/tools/audit-rules.mjs'), '--daily', '--rules-dir', path.join(root, 'server/rules'),
-      '--core-port', '8792', '--port', '8785', '--max-roads', '2', '--report', file], { cwd: root, stdio: 'inherit' });
+      '--core-port', '8792', '--port', '8785', '--max-roads', '2', '--report', file],
+    { cwd: root, stdio: 'inherit', env: { ...process.env, BANGUMI_NO_DANMAKU_NETWORK: '1' } });
     let expired = false;
     const timer = setTimeout(() => { expired = true; child.kill('SIGTERM'); }, 2 * 60 * 60 * 1000);
     child.once('error', () => { clearTimeout(timer); resolve({ code: 1, error: 'Could not start audit process' }); });

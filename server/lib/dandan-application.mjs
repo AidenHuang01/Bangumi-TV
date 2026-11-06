@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises';
+import { assertDanmakuNetworkAllowed } from './danmaku-network-policy.mjs';
 
 const names = ['DANDAN_APP_ID', 'DANDAN_APP_SECRET', 'DANDAN_APPLICATION_KEY'];
+const defaultFile = new URL('../../.env', import.meta.url);
 // Read only our credentials. Do not source shell code, expand $variables, mutate
 // process.env, or inherit arbitrary .env settings into players/child processes.
 export function parseDandanEnv(content) {
@@ -19,7 +21,8 @@ export function parseDandanEnv(content) {
   return result;
 }
 
-export async function loadDandanApplication({ file = new URL('../../.env', import.meta.url), env = process.env, fallback = {} } = {}) {
+export async function loadDandanApplication({ file = defaultFile, env = process.env, fallback = {} } = {}) {
+  if (file === defaultFile || env === process.env) assertDanmakuNetworkAllowed();
   let values = {};
   try { values = parseDandanEnv(await readFile(file, 'utf8')); }
   catch (error) { if (error.code !== 'ENOENT') throw new Error('Could not read DandanPlay application settings; check the private .env file.'); }

@@ -2,8 +2,10 @@ import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { mkdir, open } from 'node:fs/promises';
+import { assertDanmakuNetworkAllowed } from './danmaku-network-policy.mjs';
 
 export async function startDanmuService({ port = 9321, sources, credentials, application } = {}) {
+  assertDanmakuNetworkAllowed(); // Before logs, credentials, spawn or requests.
   const token = randomBytes(24).toString('hex');
   const dir = new URL('../data/logs/', import.meta.url);
   await mkdir(dir, { recursive: true });
