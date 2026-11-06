@@ -9,6 +9,7 @@ import { parseDanmaku } from '../server/lib/danmaku.mjs';
 import { loadDanmuCredentials } from '../server/lib/danmu-credentials.mjs';
 import { startDanmuService } from '../server/lib/danmu-service.mjs';
 import { createDanmuProvider } from '../server/lib/danmu-provider.mjs';
+import { loadDandanApplication } from '../server/lib/dandan-application.mjs';
 
 const args = process.argv.slice(2), baselineIndex = args.indexOf('--baseline');
 const baselineRef = baselineIndex < 0 ? null : args[baselineIndex + 1];
@@ -44,11 +45,12 @@ try {
   if (args.includes('--live')) {
     const settings = JSON.parse(await readFile(new URL('../server/settings.local.json', import.meta.url), 'utf8'));
     const credentials = await loadDanmuCredentials({ account: settings.danmu?.account, store: settings.danmu?.credentialStore });
-    worker = await startDanmuService({ port: 9322, sources: settings.danmu?.sources, credentials });
+    const application = await loadDandanApplication({ fallback: settings.dandan });
+    worker = await startDanmuService({ port: 9322, sources: settings.danmu?.sources, credentials, application });
     const provider = createDanmuProvider(worker), start = performance.now();
     const raw = await provider.acquire({ title: 'Lycoris Recoil', episode: 1, signal: AbortSignal.timeout(90000) });
     const acquired = performance.now(), comments = parseDanmaku(raw.content), parsed = performance.now();
-    console.log(JSON.stringify({ mode: 'live-read-only', source: raw.source,
+    console.log(JSON.stringify({ mode: 'live-read-only', officialConfigured: worker.official, source: raw.source,
       upstreamRows: JSON.parse(raw.content).comments.length, acquireSeconds: (acquired - start) / 1000,
       parseSeconds: (parsed - acquired) / 1000, current: measure(createDanmakuFilter, comments, settings.danmakuFilter),
       ...(baseline ? { baseline: measure(baseline, comments) } : {}) }, null, 2));

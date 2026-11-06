@@ -304,10 +304,13 @@ the phone/browser preview.
 
 **Automatic comments now use headless 弹弹play + related Bahamut aggregation.**
 After episode selection, the Mac prefetches comments independently of video
-resolution. An ordinary DandanPlay account signs in through the NipaPlay gateway;
-no developer AppId/AppSecret or official Kazumi release credentials are needed.
-The worker obtains the exact episode's native comments and the gateway-provided
-Bahamut links, applies each link's timing offset, then uses danmu_api's existing
+resolution. If your own AppId/AppSecret is configured, search and metadata prefer
+the official **弹弹play开放弹幕网络** API (`https://api.dandanplay.net`). An optional
+ordinary DandanPlay account still signs in through NipaPlay for related-source
+enrichment and failure fallback. Without an application, the existing account
+path remains available; no official Kazumi release credentials are used.
+The worker merges the exact episode's official/account native comments and the
+associated Bahamut links, applies each link's timing offset, then uses danmu_api's existing
 formatting and exact-time duplicate handling. It does not collapse matching
 comments across an entire minute. Neither Kazumi's GUI nor a Mac video player or
 video download is started. The existing Kazumi core still resolves video sources.
@@ -325,13 +328,41 @@ to `huangxd-/danmu_api` commit `4d325e096bbbf0c1ff261a9bfa638f7c58784f60`;
 its original AGPL license remains in `.tools/danmu-api/LICENSE`. Only its request
 handler runs, on `127.0.0.1:9321` behind a random per-start token. Upstream's
 public UI, admin routes and proxy server are not exposed. No TLS checks are
-disabled. With an account, default sources are `dandan,bahamut,bilibili,animeko`;
-without one, anonymous `bahamut,bilibili,animeko` remain available. The unrelated
-hosted fallback is disabled. Our account adapter replaces upstream's dandan
-network calls: only the fixed HTTPS NipaPlay gateway receives credentials, auth
+disabled. With an application or account, defaults are `dandan,bahamut,bilibili,animeko`;
+without either, anonymous `bahamut,bilibili,animeko` remain available. The unrelated
+hosted fallback is disabled. Our clients replace upstream's dandan
+network calls: only the fixed HTTPS NipaPlay gateway receives account credentials, auth
 redirects are not followed, and the plaintext HTTP backup is never used. Signed
 CDN URLs are fetched immediately without account headers and never cached or
 logged. Bahamut comments are fetched only for the associated numeric video ID.
+
+Official application setup (server only): copy `.env.example` to a private `.env`
+in the project root and set `DANDAN_APP_ID` and `DANDAN_APPLICATION_KEY` (your
+AppSecret; `DANDAN_APP_SECRET` is also supported). Restrict it with `chmod 600 .env`,
+then restart the backend. LaunchAgent and manual startup both read this file;
+no shell `source`, dotenv expansion, global environment mutation or frontend
+injection occurs. Explicit deployment environment values take precedence, and
+the old ignored `dandan.appId/appSecret` settings remain supported as a fallback.
+Only these application settings are read from `.env`. App credentials go solely
+to the official HTTPS API using per-request signatures, not to NipaPlay or the
+CDN; the worker receives them over private stdin, never argv/environment/logs.
+The OAuth callback is not needed for search/read-only comments. See the
+[official API guide](https://doc.dandanplay.com/open/) and [弹弹play官网](https://www.dandanplay.com/).
+
+Do not remove account enrichment just because official requests succeed:
+application and account responses can carry different associated-platform links.
+Our live comparison found official-only Lycoris episode 1 had 2,610 native rows,
+while keeping account/Bahamut enrichment delivered 4,308 valid rows. Both native
+responses are merged without counting identical raw rows twice; existing exact-time
+deduplication still applies, not minute-wide thinning. Either channel failing
+does not discard the other's data, but no path promises every historical comment.
+Current production mode is visible in `/api/controller/danmaku` as `connection`.
+`npm run benchmark:danmaku-sources` runs an explicit read-only two-episode
+comparison on isolated ports 9322/9323 and prints counts/timing, not comment text
+or signed URLs. It requires both existing account credentials and application
+credentials, leaves production TV playback unchanged, and stops its own workers.
+API access remains subject to your application's permissions/quota; this comparison
+is not part of nightly video-source audits or a bulk comment crawler.
 
 Account privacy: NipaPlay is a third-party gateway, not DandanPlay itself; your
 account password passes through it. Use only an account you authorize for this.

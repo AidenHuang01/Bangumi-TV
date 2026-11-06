@@ -13,6 +13,7 @@ import { createDanmuProvider } from './lib/danmu-provider.mjs';
 import { createKazumiAcquirer } from './lib/kazumi-acquire.mjs';
 import { loadDanmuCredentials } from './lib/danmu-credentials.mjs';
 import { createHeadlessAcquirer } from './lib/headless-danmaku.mjs';
+import { loadDandanApplication } from './lib/dandan-application.mjs';
 
 const port = Number(process.env.PORT || 8787);
 const host = process.env.HOST || '0.0.0.0';
@@ -31,8 +32,11 @@ const automaticCache = createVerifiedKazumiCache(kazumiCache, {
 let danmuService, danmuProvider;
 if (settings.danmu?.enabled !== false) {
   try {
-    const credentials = await loadDanmuCredentials({ account: settings.danmu?.account, store: settings.danmu?.credentialStore });
-    danmuService = await startDanmuService({ port: settings.danmu?.port || 9321, sources: settings.danmu?.sources, credentials });
+    let application, credentials;
+    try { application = await loadDandanApplication({ fallback: settings.dandan }); } catch (error) { console.error(error.message); }
+    try { credentials = await loadDanmuCredentials({ account: settings.danmu?.account, store: settings.danmu?.credentialStore }); }
+    catch (error) { console.error(error.message); } // An unavailable account must not disable official access.
+    danmuService = await startDanmuService({ port: settings.danmu?.port || 9321, sources: settings.danmu?.sources, credentials, application });
     danmuProvider = createDanmuProvider(danmuService);
   } catch (error) { console.error(error.message); } // Video service still starts if comments are unavailable.
 }
@@ -45,7 +49,8 @@ const danmaku = createDanmaku({ ...settings.dandan, core, provider: danmuProvide
   automatic: officialEnabled ? { engine: 'official-kazumi', configured: true,
     message: '官方 Kazumi 自动弹幕：播放后获取对应集，文件就绪后转发至电视／手机并退出 Mac 客户端。获取期间客户端可能短暂显示播放画面。' }
     : danmuService?.aggregation ? { engine: 'danmu_api', configured: true,
-      message: '弹弹play＋巴哈姆特关联弹幕：选集后后台合并、去重并同步电视／手机，Mac 不打开播放器或下载视频。' } : undefined,
+      connection: danmuService.official ? 'official-app-with-related-enrichment' : 'nipaplay-account',
+      message: (danmuService.official ? '官方弹弹play API＋关联弹幕补充：' : '弹弹play＋巴哈姆特关联弹幕：') + '选集后后台合并、去重并同步电视／手机，Mac 不打开播放器或下载视频。' } : undefined,
   coreConfigured: core ? (await core.health()).danmaku?.configured === true : false });
 const app = createApp({ mediaDir: process.env.MEDIA_DIR, sourcesFile: process.env.SOURCES_FILE, discovery, kazumiCache,
   automaticCache: officialEnabled || !danmuProvider ? automaticCache : { list: async () => ({ items: [] }) },

@@ -17,6 +17,7 @@
     "audit:rules": "node server/tools/audit-rules.mjs",
     "audit:daily": "node scripts/daily-audit.mjs",
     "benchmark:danmaku": "node scripts/benchmark-danmaku-filter.mjs",
+    "benchmark:danmaku-sources": "node scripts/benchmark-danmaku-sources.mjs",
     "schedule:install": "node scripts/install-daily-audit.mjs",
     "service:install": "node scripts/install-server-service.mjs",
     "package:tv": "node scripts/package-tv.mjs",

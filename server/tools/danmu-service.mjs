@@ -3,6 +3,8 @@
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { connectNipaplay } from '../lib/danmu-nipaplay.mjs';
+import { createNipaplayClient } from '../lib/nipaplay-client.mjs';
+import { createDandanClient } from '../lib/dandan-client.mjs';
 
 let credentialInput = '';
 for await (const chunk of process.stdin) {
@@ -12,20 +14,26 @@ for await (const chunk of process.stdin) {
 let credentials = JSON.parse(credentialInput || '{}'); credentialInput = '';
 if (credentials.account && (typeof credentials.account !== 'string' || credentials.account.length > 200 ||
   typeof credentials.password !== 'string' || !credentials.password || credentials.password.length > 1024)) throw new Error('Invalid private startup configuration');
-const aggregation = Boolean(credentials.account && credentials.password);
+const accountConfigured = Boolean(credentials.account && credentials.password);
+const application = credentials.application;
+if (application && (typeof application.appId !== 'string' || !/^[a-zA-Z0-9_-]{1,100}$/u.test(application.appId) ||
+  typeof application.appSecret !== 'string' || !application.appSecret || application.appSecret.length > 1024)) throw new Error('Invalid private application configuration');
+const official = Boolean(application), aggregation = official || accountConfigured;
 
 const root = new URL('../../.tools/danmu-api/', import.meta.url);
 process.chdir(fileURLToPath(root));
 const { handleRequest } = await import(new URL('danmu_api/worker.js', root));
 const { getSourceByKey } = await import(new URL('danmu_api/sources/registry.js', root));
-// Never use an unrelated hosted fallback. The approved NipaPlay account path
-// below replaces upstream's dandan gateway, including its insecure HTTP failover.
+// Never use upstream's unrelated hosted fallback or plaintext HTTP failover.
+// Only our fixed HTTPS official/account clients may authenticate requests.
 const other = getSourceByKey('other');
 other.getComments = other.getSegmentComments = async () => [];
 const dandan = getSourceByKey('dandan');
 if (aggregation) {
   const { parseNipaplayRelatedLinks, resolveNipaplayLink, applyShiftToDanmu } = await import(new URL('danmu_api/utils/nipaplay-util.js', root));
-  connectNipaplay({ credentials, getSourceByKey, parseRelatedLinks: parseNipaplayRelatedLinks,
+  const accountClient = accountConfigured ? createNipaplayClient(credentials) : undefined;
+  connectNipaplay({ credentials, client: official ? createDandanClient(application) : accountClient,
+    supplementalClient: official ? accountClient : undefined, getSourceByKey, parseRelatedLinks: parseNipaplayRelatedLinks,
     resolveLink: resolveNipaplayLink, applyShift: applyShiftToDanmu });
 } else {
   dandan.search = async () => [];
@@ -43,7 +51,7 @@ const server = http.createServer(async (req, res) => {
   const send = (status, data) => { if (!res.destroyed) { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(data)); } };
   const url = new URL(req.url, 'http://127.0.0.1');
   if (req.headers['x-bangumi-danmu'] !== token) return send(401, { error: 'Unauthorized' });
-  if (url.pathname === '/health') return send(200, { engine: 'danmu_api', aggregation, sources: env.SOURCE_ORDER.split(','), active });
+  if (url.pathname === '/health') return send(200, { engine: 'danmu_api', aggregation, official, sources: env.SOURCE_ORDER.split(','), active });
   if (req.method !== 'GET' || !/^\/api\/v2\/(?:search\/(?:anime|episodes)|bangumi\/[a-zA-Z0-9_-]{1,200}|comment\/[a-zA-Z0-9_-]{1,200})$/.test(url.pathname))
     return send(404, { error: 'Not found' });
   if (active >= 3) return send(429, { error: 'Busy' });
