@@ -132,6 +132,17 @@ and distributor certificate passwords only in Terminal if Tizen requests them.
 
 Open **http://10.0.0.30:8787/remote/** on your phone, on the same home Wi-Fi.
 
+In **电视遥控**, drag the playback slider to preview a time; release to seek the
+TV once. Polling cannot move the thumb while dragging. The slider waits for TV
+confirmation and disables while offline, loading, duration-unknown or seeking;
+canceled gestures and episode changes discard the old target. Paused playback
+stays paused. The Mac validates a playback-context token and translates the
+absolute target using the receiver's fresh position into the existing relative
+seek command, so TV 0.6.2 requires no widget update. Keyframe-limited sources may
+land slightly away from the chosen timestamp; actual TV time is shown afterwards.
+Restart the backend for this controller update, then refresh the phone page.
+This feature does not search, reload, or request danmaku.
+
 Use **电视遥控 / 手机播放器** at the top to choose the playback target. In phone
 mode, selecting an episode resolves it on the Mac and plays the original stream
 in the phone browser, even with the TV offline. **在手机继续当前视频** opens the

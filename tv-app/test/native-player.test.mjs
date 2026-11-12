@@ -253,3 +253,21 @@ test('phone Stop prevents a pending prepare from starting later and reports stop
   assert.equal(app.calls.filter(call => call[0] === 'play').length, 0);
   assert.equal(app.reports.at(-1).terminal.reason, 'stopped');
 });
+
+test('installed receiver accepts large slider-derived forward/back deltas without reopening video or changing pause state', () => {
+  for (const paused of [false, true]) {
+    const app = setup(true); app.start(); app.ready();
+    app.avplay.getDuration = () => 600000;
+    app.avplay.seekTo(12000, () => {});
+    if (paused) app.avplay.pause();
+    app.commands.push({ seq: 1, action: 'seek', seconds: 78 }); app.poll();
+    assert.ok(app.calls.some(call => call[0] === 'seek' && call[1] === 90000));
+    for (const callback of [...app.timeouts.values()]) callback();
+    app.commands.push({ seq: 2, action: 'seek', seconds: -60 }); app.poll();
+    assert.ok(app.calls.some(call => call[0] === 'seek' && call[1] === 30000));
+    for (const callback of [...app.timeouts.values()]) callback(); app.poll();
+    assert.equal(app.reports.at(-1).seek.state, 'done');
+    assert.equal(app.reports.at(-1).status, paused ? 'paused' : 'playing');
+    assert.equal(app.calls.filter(call => call[0] === 'open').length, 1);
+  }
+});

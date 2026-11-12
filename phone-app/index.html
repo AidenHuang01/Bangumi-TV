@@ -16,7 +16,10 @@
         <div class="section-heading"><span class="eyebrow">ON YOUR TV</span><span class="hint">No pairing needed</span></div>
         <h2 id="now-title">Nothing playing</h2><p id="now-status" class="hint">Open the app on the TV to connect.</p>
         <p id="tv-danmaku-state" class="hint" role="status">弹幕：播放后自动获取。</p>
-        <div class="progress"><div id="progress-fill"></div></div><p id="playback-time" class="time">0:00 / 0:00</p>
+        <label for="seek-position" class="seek-label">电视播放进度</label>
+        <input id="seek-position" class="seek-slider" type="range" min="0" max="1" step="1000" value="0" disabled aria-describedby="playback-time seek-hint" aria-valuetext="0:00 / 0:00">
+        <p id="playback-time" class="time">0:00 / 0:00</p>
+        <p id="seek-hint" class="hint seek-hint" role="status">播放就绪后可拖动，松手跳转。</p>
         <div class="transport"><button id="seek-back" aria-label="Seek back 10 seconds">−10s</button><button id="toggle-play" class="primary">Pause</button><button id="seek-forward" aria-label="Seek forward 10 seconds">+10s</button><button id="stop">Stop</button></div>
       </section>
       <section class="panel" id="phone-player-panel" hidden>

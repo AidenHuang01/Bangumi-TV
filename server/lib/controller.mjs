@@ -1,4 +1,4 @@
-import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
 const error = (message, status = 400) => Object.assign(new Error(message), { status });
 const id = () => randomBytes(18).toString('hex');
@@ -15,6 +15,13 @@ export function createController({ discovery, prepareTVItem = async item => item
   let revision = 0;
   let cancelSelection;
   const online = () => !!receiver && now() - receiver.lastSeen < 10000;
+  const seekContext = () => receiver ? createHash('sha256').update(JSON.stringify([
+    epoch, generation, receiver.playbackId || '', receiver.mediaId || '', receiver.title || ''
+  ])).digest('hex').slice(0, 32) : null;
+  const canSeek = () => online() && !['resolving', 'preparing', 'loading'].includes(phase) &&
+    ['playing', 'paused'].includes(receiver.status) && receiver.duration > 1000 &&
+    !commands.some(command => ['play', 'stop'].includes(command.action));
+  const clampSeek = positionMs => Math.max(0, Math.min(positionMs, Math.max(0, (receiver?.duration || 0) - 1000)));
   function restorePending() {
     if (active?.fromQueue && ['resolving', 'preparing', 'loading'].includes(phase) && receiver?.playbackId !== active.playbackId &&
       !queue.some(entry => entry.id === active.id) && queue.length < 100) {
@@ -64,7 +71,7 @@ export function createController({ discovery, prepareTVItem = async item => item
     }).catch(failure => { lastError = failure.message; phase = 'error'; });
   }
   return {
-    info() { return { tvOnline: online(), receiverVersion: receiver?.version || null, controllerVersion: '0.3.0' }; },
+    info() { return { tvOnline: online(), receiverVersion: receiver?.version || null, controllerVersion: '0.4.0' }; },
     register(input) {
       if (typeof input.clientId !== 'string' || !/^[a-zA-Z0-9_-]{8,80}$/.test(input.clientId)) throw error('Invalid TV client ID');
       if (online() && receiver.clientId !== input.clientId) throw error('Another TV receiver is already connected.', 409);
@@ -116,10 +123,21 @@ export function createController({ discovery, prepareTVItem = async item => item
         active = null; phase = 'idle'; lastError = '';
         if (input.terminal.reason === 'ended' && queue.length) next();
       }
-      return { epoch, commands };
+      // Recalculate an absolute phone target using this fresh receiver sample,
+      // not the older position visible while the user was dragging. The wire
+      // command remains relative for installed 0.6.2 widgets.
+      commands = commands.filter(command => !Object.hasOwn(command, 'positionMs') ||
+        command.seekContext === seekContext() && ['playing', 'paused'].includes(receiver.status) && receiver.duration > 0 &&
+        Math.abs(clampSeek(command.positionMs) - receiver.position) >= 500);
+      return { epoch, commands: commands.map(command => {
+        if (!Object.hasOwn(command, 'positionMs')) return command;
+        const { positionMs, seekContext: context, ...legacy } = command;
+        const target = clampSeek(positionMs);
+        return { ...legacy, seconds: (target - receiver.position) / 1000 };
+      }) };
     },
     state() {
-      return { ...this.info(), revision, phase, error: lastError, active: publicEntry(active),
+      return { ...this.info(), revision, phase, error: lastError, active: publicEntry(active), seekContext: seekContext(), seekAvailable: canSeek(),
         media: this.media(),
         tv: { status: receiver?.status || 'idle', title: receiver?.title || '',
           position: receiver?.position || 0, duration: receiver?.duration || 0, seek: receiver?.seek || null },
@@ -153,8 +171,21 @@ export function createController({ discovery, prepareTVItem = async item => item
       else if (['pause', 'resume', 'stop', 'seek'].includes(input.action)) {
         if (!online()) throw error('The TV is offline.', 409);
         if (input.action === 'stop') { cancelSelection?.(); cancelSelection = null; restorePending(); generation++; commands = []; active = null; phase = 'idle'; lastError = ''; }
-        if (input.action === 'seek' && ![-10, 10].includes(input.seconds)) throw error('Seek must be −10 or +10 seconds');
-        issue(input.action, input.action === 'seek' ? { seconds: input.seconds } : {});
+        if (input.action === 'seek') {
+          if (Object.hasOwn(input, 'positionMs')) {
+            if (!Number.isSafeInteger(input.positionMs) || input.positionMs < 0 || input.positionMs > 86400000 || Object.hasOwn(input, 'seconds'))
+              throw error('Seek position must be a nonnegative millisecond integer.');
+            if (!input.seekContext || input.seekContext !== seekContext()) throw error('视频已变化，请重新拖动进度条。', 409);
+            if (!canSeek())
+              throw error('当前视频尚不能跳转，请等待播放就绪。', 409);
+            if (receiver.seek?.state === 'seeking' || commands.some(command => command.action === 'seek')) throw error('电视正在跳转，请稍候。', 409);
+            const target = clampSeek(input.positionMs);
+            if (Math.abs(target - receiver.position) >= 500) issue('seek', { positionMs: target, seekContext: input.seekContext });
+          } else {
+            if (![-10, 10].includes(input.seconds)) throw error('Seek must be −10 or +10 seconds');
+            issue('seek', { seconds: input.seconds });
+          }
+        } else issue(input.action);
       } else throw error('Unknown controller action');
       revision++;
       return this.state();

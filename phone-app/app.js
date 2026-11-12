@@ -4,6 +4,7 @@
   let state = null, show = null, searchGeneration = 0, requestGeneration = 0;
   let stateBusy = false, noticeTimer, queueSignature = '';
   let recentSignature = '', recentBusy = false;
+  let stateAvailable = false, seekDrag = null, pendingSeek = null;
   let mode = 'remote', phoneItem = null, hls = null, phoneGeneration = 0, phoneDanmakuVersion = '', phoneDanmakuBusy = false, phoneBuffering = true;
   const phoneVideo = $('phone-video');
   const phoneDanmaku = window.BangumiDanmaku ? new window.BangumiDanmaku($('phone-danmaku')) : null;
@@ -133,9 +134,69 @@
     finally { clearTimeout(timer); }
   }
   function time(milliseconds) {
-    const seconds = Math.max(0, Math.floor((milliseconds || 0) / 1000));
-    return Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
+    const seconds = Math.max(0, Math.floor((Number.isFinite(milliseconds) ? milliseconds : 0) / 1000));
+    return (seconds >= 3600 ? Math.floor(seconds / 3600) + ':' + String(Math.floor(seconds / 60) % 60).padStart(2, '0') : Math.floor(seconds / 60)) + ':' + String(seconds % 60).padStart(2, '0');
   }
+  function seekReady(value = state) {
+    return stateAvailable && value?.tvOnline && value.seekContext && value.seekAvailable !== false &&
+      !['resolving', 'preparing', 'loading'].includes(value.phase) && ['playing', 'paused'].includes(value.tv.status) &&
+      Number.isFinite(value.tv.duration) && value.tv.duration > 1000;
+  }
+  function renderProgress(value = state) {
+    if (!value) return;
+    const slider = $('seek-position'), ready = seekReady(value), context = value.seekContext;
+    if (seekDrag && (!ready || seekDrag.context !== context)) seekDrag = null;
+    if (pendingSeek) {
+      const reported = value.tv.seek, changed = JSON.stringify(reported || null) !== pendingSeek.previousSeek;
+      const ownResult = changed && reported && Math.abs(reported.target - pendingSeek.target) < 3500;
+      if (!ready || pendingSeek.context !== context) pendingSeek = null;
+      else if (ownResult && ['done', 'error'].includes(reported.state)) {
+        pendingSeek = null;
+        if (reported.state === 'error') notice(reported.error || '电视跳转失败，请换一条线路重试。', true);
+      } else if (Math.abs(value.tv.position - pendingSeek.target) < 1000 && reported?.state !== 'seeking') pendingSeek = null;
+      else if (Date.now() > pendingSeek.expires) { pendingSeek = null; notice('电视尚未确认跳转，请检查电视状态后重试。', true); }
+    }
+    const duration = seekDrag?.duration || value.tv.duration || 0, maximum = Math.max(0, duration - 1000);
+    const position = Math.max(0, Math.min(maximum, seekDrag?.target ?? pendingSeek?.target ?? value.tv.position ?? 0));
+    slider.max = String(Math.max(1, maximum)); slider.value = String(position);
+    slider.style.setProperty('--seek-percent', maximum > 0 ? Math.min(100, 100 * position / maximum) + '%' : '0%');
+    slider.setAttribute('aria-valuetext', time(position) + ' / ' + time(duration));
+    slider.disabled = !ready || !!pendingSeek || value.tv.seek?.state === 'seeking';
+    $('playback-time').textContent = time(position) + ' / ' + time(duration);
+    $('seek-hint').textContent = seekDrag ? '松手跳转至 ' + time(position) : pendingSeek ? '正在请求电视跳转至 ' + time(position) + '…' :
+      !ready ? '电视离线、正在加载或时长未知时无法拖动。' : value.tv.seek?.state === 'seeking' ? '电视正在跳转，请稍候…' : '拖动快进／回退，松手后跳转。';
+  }
+  function beginSeekDrag() {
+    if (!seekReady() || pendingSeek || state.tv.seek?.state === 'seeking') return false;
+    seekDrag ||= { context: state.seekContext, duration: state.tv.duration, target: state.tv.position, changed: false };
+    return true;
+  }
+  function cancelSeekDrag() { seekDrag = null; renderProgress(); }
+  const seekSlider = $('seek-position');
+  seekSlider.onpointerdown = () => { beginSeekDrag(); };
+  seekSlider.oninput = () => {
+    if (!beginSeekDrag()) { renderProgress(); return; }
+    seekDrag.target = Math.round(Math.max(0, Math.min(seekDrag.duration - 1000, Number(seekSlider.value))));
+    seekDrag.changed = true; renderProgress();
+  };
+  seekSlider.onpointercancel = cancelSeekDrag;
+  seekSlider.onpointerup = () => { if (seekDrag && !seekDrag.changed) cancelSeekDrag(); };
+  seekSlider.onblur = cancelSeekDrag;
+  seekSlider.onkeydown = event => { if (event.key === 'Escape') { event.preventDefault(); cancelSeekDrag(); } };
+  seekSlider.onchange = async () => {
+    if (!seekDrag?.changed) { cancelSeekDrag(); return; }
+    const drag = seekDrag; seekDrag = null;
+    if (!seekReady() || state.seekContext !== drag.context || pendingSeek) { renderProgress(); return; }
+    const pending = { context: drag.context, target: drag.target, previousSeek: JSON.stringify(state.tv.seek || null), expires: Date.now() + 20000 };
+    pendingSeek = pending; renderProgress();
+    ['seek-back', 'seek-forward'].forEach(id => { $(id).disabled = true; });
+    try {
+      const result = await api('/api/controller/action', { method: 'POST', body: JSON.stringify({ action: 'seek', positionMs: drag.target, seekContext: drag.context }) }, 12000);
+      if (pendingSeek === pending) renderState(result);
+    } catch (error) {
+      if (pendingSeek === pending) { pendingSeek = null; renderProgress(); notice(error.message, true); }
+    }
+  };
   function connection(online) {
     $('connection').textContent = online ? 'TV online' : 'TV offline';
     $('connection').classList.toggle('online', online);
@@ -186,22 +247,21 @@
   }
   function renderState(value) {
     if (state && value.revision < state.revision) return;
-    state = value; connection(value.tvOnline);
+    state = value; stateAvailable = true; connection(value.tvOnline); renderProgress(value);
     showAutoDanmaku(value.danmaku, 'tv');
     $('watch-current').disabled = !value.media;
     $('now-title').textContent = value.active?.title || value.tv.title || 'Nothing playing';
     const phaseStatus = { resolving: 'Finding the stream on your Mac… up to 45 seconds.',
       preparing: 'Preparing original-quality video for the TV on your Mac…', loading: 'Loading on the TV…' }[value.phase];
     $('now-status').textContent = value.error || (!value.tvOnline ? 'TV offline. Open the updated Bangumi TV app on the TV.' :
-      phaseStatus ||
+      phaseStatus || (pendingSeek ? '正在请求电视跳转至 ' + time(pendingSeek.target) + '…' : '') ||
       value.tv.seek?.error || (value.tv.seek?.state === 'seeking' ? 'Seeking on TV…' : '') ||
       (value.tv.status === 'playing' ? 'Playing on TV' :
       value.tv.status === 'paused' ? 'Paused on TV' : 'Ready. Choose an episode or play the queue.'));
-    $('playback-time').textContent = time(value.tv.position) + ' / ' + time(value.tv.duration);
-    $('progress-fill').style.width = value.tv.duration > 0 ? Math.min(100, 100 * value.tv.position / value.tv.duration) + '%' : '0%';
     $('toggle-play').textContent = value.tv.status === 'paused' ? 'Resume' : 'Pause';
     const playable = value.tvOnline && !['resolving', 'preparing', 'loading'].includes(value.phase) && ['playing', 'paused'].includes(value.tv.status);
     ['toggle-play', 'seek-back', 'seek-forward'].forEach(id => { $(id).disabled = !playable; });
+    if (pendingSeek || value.tv.seek?.state === 'seeking') ['seek-back', 'seek-forward'].forEach(id => { $(id).disabled = true; });
     $('stop').disabled = !value.tvOnline;
     $('play-next').disabled = !value.tvOnline || !value.queue.length || ['resolving', 'preparing'].includes(value.phase);
     $('clear-queue').disabled = !value.queue.length;
@@ -227,6 +287,7 @@
     try {
       renderState(await api('/api/controller/state', {}, 8000));
     } catch (error) {
+      stateAvailable = false; seekDrag = null; pendingSeek = null; renderProgress();
       $('connection').textContent = 'Mac disconnected'; $('connection').classList.remove('online'); $('now-status').textContent = error.message;
       ['toggle-play', 'seek-back', 'seek-forward', 'stop', 'play-next'].forEach(id => { $(id).disabled = true; });
     }

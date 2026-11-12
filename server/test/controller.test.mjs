@@ -16,6 +16,109 @@ function setup(options = {}) {
   return { controller, discovery, receiver, poll, tick: amount => { time += amount; } };
 }
 
+test('phone slider uses the fresh receiver position and stays compatible with existing relative-seek widgets', () => {
+  const { controller: c, poll } = setup();
+  const sample = { status: 'playing', title: 'Episode 1', position: 10000, duration: 600000 };
+  poll(sample); const context = c.state().seekContext;
+  assert.equal(c.state().seekAvailable, true);
+  c.mutate({ action: 'seek', positionMs: 90000, seekContext: context });
+  const forward = poll({ ...sample, position: 12000 }).commands[0];
+  assert.equal(forward.action, 'seek'); assert.equal(forward.seconds, 78);
+  assert.equal(forward.positionMs, undefined); assert.equal(forward.seekContext, undefined);
+  poll({ ...sample, applied: forward.seq, position: 90000 });
+  c.mutate({ action: 'seek', positionMs: 30000, seekContext: context });
+  const backward = poll({ ...sample, applied: forward.seq, position: 92000 }).commands[0];
+  assert.equal(backward.seconds, -62);
+  assert.equal(c.state().tv.status, 'playing');
+});
+
+test('absolute seeks are clamped away from the end and no-op seeks do not issue a command', () => {
+  const { controller: c, poll } = setup();
+  const sample = { status: 'paused', title: 'Episode 1', position: 10000, duration: 60000 };
+  poll(sample); const context = c.state().seekContext;
+  c.mutate({ action: 'seek', positionMs: 10000, seekContext: context });
+  assert.equal(poll(sample).commands.length, 0);
+  c.mutate({ action: 'seek', positionMs: 86400000, seekContext: context });
+  const end = poll(sample).commands[0]; assert.equal(end.seconds, 49);
+  poll({ ...sample, applied: end.seq, position: 59000 });
+  c.mutate({ action: 'seek', positionMs: 0, seekContext: context });
+  assert.equal(poll({ ...sample, applied: end.seq, position: 59000 }).commands[0].seconds, -59);
+  assert.equal(c.state().tv.status, 'paused');
+});
+
+test('a target already reached before receiver polling is not sent as an invalid zero-distance seek', () => {
+  const { controller: c, poll } = setup();
+  const sample = { status: 'playing', title: 'Episode 1', position: 10000, duration: 600000 };
+  poll(sample);
+  c.mutate({ action: 'seek', positionMs: 20000, seekContext: c.state().seekContext });
+  assert.equal(poll({ ...sample, position: 20000 }).commands.length, 0);
+});
+
+test('stale sliders cannot seek another episode, including a switch after queuing the command', () => {
+  const { controller: c, poll } = setup();
+  const sample = { status: 'playing', title: 'Episode 1', position: 10000, duration: 600000 };
+  poll(sample); const context = c.state().seekContext;
+  c.mutate({ action: 'seek', positionMs: 90000, seekContext: context });
+  assert.equal(poll({ ...sample, title: 'Episode 2' }).commands.length, 0);
+  assert.notEqual(c.state().seekContext, context);
+  assert.throws(() => c.mutate({ action: 'seek', positionMs: 90000, seekContext: context }), error => error.status === 409);
+  const nextContext = c.state().seekContext;
+  c.register({ clientId: 'tv-fixture', bootId: 'new-boot' });
+  assert.notEqual(c.state().seekContext, nextContext);
+});
+
+test('slider rejects malformed targets, mixed relative/absolute commands, offline and unready playback', () => {
+  const { controller: c, poll, tick } = setup();
+  const sample = { status: 'playing', title: 'Episode 1', position: 10000, duration: 600000 };
+  poll(sample); const context = c.state().seekContext;
+  for (const positionMs of [-1, NaN, Infinity, 1.5, 86400001, '1000', null]) {
+    assert.throws(() => c.mutate({ action: 'seek', positionMs, seekContext: context }), /millisecond/);
+  }
+  assert.throws(() => c.mutate({ action: 'seek', positionMs: 20000, seconds: 10, seekContext: context }), /millisecond/);
+  assert.throws(() => c.mutate({ action: 'seek', positionMs: 20000 }), error => error.status === 409);
+  for (const patch of [{ duration: 0 }, { status: 'loading' }, { status: 'idle' }]) {
+    poll({ ...sample, ...patch });
+    assert.equal(c.state().seekAvailable, false);
+    assert.throws(() => c.mutate({ action: 'seek', positionMs: 20000, seekContext: context }), /尚不能跳转/);
+  }
+  poll(sample); tick(10001);
+  assert.throws(() => c.mutate({ action: 'seek', positionMs: 20000, seekContext: context }), /offline/);
+});
+
+test('a pending seek or Stop prevents overlapping slider requests', () => {
+  const { controller: c, poll } = setup();
+  const sample = { status: 'playing', title: 'Episode 1', position: 10000, duration: 600000 };
+  poll(sample); const context = c.state().seekContext;
+  c.mutate({ action: 'seek', positionMs: 20000, seekContext: context });
+  assert.throws(() => c.mutate({ action: 'seek', positionMs: 40000, seekContext: context }), /正在跳转/);
+  const command = poll(sample).commands[0];
+  poll({ ...sample, applied: command.seq, seek: { state: 'seeking' } });
+  assert.throws(() => c.mutate({ action: 'seek', positionMs: 40000, seekContext: context }), /正在跳转/);
+  c.mutate({ action: 'stop' }); assert.equal(c.state().seekAvailable, false);
+  assert.throws(() => c.mutate({ action: 'seek', positionMs: 40000, seekContext: c.state().seekContext }), /尚不能跳转/);
+});
+
+test('slider HTTP action validates origin/context and delivers a legacy command over authenticated receiver polling', async t => {
+  const { discovery } = setup();
+  const server = createApp({ discovery, receiverAddress: '127.0.0.1' });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => { server.closeAllConnections(); server.close(); });
+  const base = 'http://127.0.0.1:' + server.address().port;
+  const post = (route, value, headers = {}) => fetch(base + route, { method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(value) });
+  const { session } = await (await post('/api/tv/register', { clientId: 'slider-http-tv', version: '0.6.2' })).json();
+  const sample = { title: 'Test episode', status: 'paused', position: 20000, duration: 300000 };
+  await post('/api/tv/poll', sample, { 'X-Bangumi-TV': session });
+  const state = await (await fetch(base + '/api/controller/state')).json();
+  const input = { action: 'seek', positionMs: 150000, seekContext: state.seekContext };
+  assert.equal((await post('/api/controller/action', input, { Origin: 'https://unrelated.example' })).status, 403);
+  assert.equal((await post('/api/controller/action', { ...input, seekContext: 'old-context' })).status, 409);
+  assert.equal((await post('/api/controller/action', input)).status, 200);
+  const { commands } = await (await post('/api/tv/poll', { ...sample, position: 21000 }, { 'X-Bangumi-TV': session })).json();
+  assert.equal(commands.length, 1); assert.equal(commands[0].action, 'seek'); assert.equal(commands[0].seconds, 129);
+  assert.equal(commands[0].seekContext, undefined);
+});
+
 test('single-TV status is directly available with no phone pairing or credentials', () => {
   const { controller: c, receiver, tick } = setup();
   assert.equal(c.state().tvOnline, true); assert.equal(receiver.pairCode, undefined);
