@@ -9,7 +9,8 @@ const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 // Exercise the Samsung branch without assuming an emulator equals real TV hardware.
 function setup(receiver = false, comments = false) {
   const elements = {}, handlers = {}, timeouts = new Map(), intervals = new Map(), calls = [];
-  let timerId = 0, state = 'NONE', now = 0, listener, prepared;
+  let timerId = 0, clock = 0, state = 'NONE', now = 0, listener, prepared;
+  const deadlines = new Map();
   const commands = [], reports = [];
   const danmakuCalls = [];
   let danmakuResponse = { count: 0, comments: [], enabled: true, version: '1', automatic: { message: '正在获取官方弹幕，视频继续播放…' } };
@@ -75,11 +76,23 @@ function setup(receiver = false, comments = false) {
     this.clear = () => danmakuCalls.push(['clear']); this.tick = (...args) => danmakuCalls.push(['tick', ...args]);
   };
   const context = { window, document, localStorage: { getItem: () => null, setItem: () => {} }, XMLHttpRequest: XHR,
-    setTimeout: callback => { timeouts.set(++timerId, callback); return timerId; }, clearTimeout: id => timeouts.delete(id),
+    setTimeout: (callback, delay = 0) => { timeouts.set(++timerId, callback); deadlines.set(timerId, clock + delay); return timerId; },
+    clearTimeout: id => { timeouts.delete(id); deadlines.delete(id); },
     setInterval: callback => { intervals.set(++timerId, callback); return timerId; }, clearInterval: id => intervals.delete(id) };
   vm.runInNewContext(source, context);
   function key(code) { handlers.keydown({ keyCode: code, preventDefault() {} }); }
-  return { elements, calls, key, timeouts, intervals, commands, reports, avplay, danmakuCalls,
+  function advance(milliseconds) {
+    const end = clock + milliseconds;
+    while (true) {
+      const next = [...deadlines].filter(([id, due]) => timeouts.has(id) && due <= end).sort((a, b) => a[1] - b[1])[0];
+      if (!next) break;
+      const [id, due] = next, callback = timeouts.get(id);
+      clock = due; deadlines.delete(id); timeouts.delete(id); callback();
+    }
+    clock = end;
+  }
+  return { elements, calls, key, advance, timeouts, intervals, commands, reports, avplay, danmakuCalls,
+    get focused() { return document.activeElement; },
     comments: value => { danmakuResponse = value; },
     poll: () => { for (const callback of [...intervals.values()]) callback(); },
     start: () => elements.cards.children[0].onclick(),
@@ -157,6 +170,90 @@ test('missing seek callbacks unlock retries and report a nonfatal error to the p
   assert.equal(app.reports.at(-1).seek.state, 'error');
   assert.equal(app.reports.at(-1).status, 'playing');
   app.key(417); assert.equal(attempts, 2);
+});
+
+test('seek rejection clears its notice and auto-hides the playing HUD without losing the phone error', () => {
+  const app = setup(true); app.start(); app.ready();
+  let attempts = 0;
+  app.avplay.seekTo = (_target, _success, error) => { attempts++; error({ name: 'PLAYER_ERROR_INVALID_STATE' }); };
+  app.key(417);
+  assert.match(app.elements['playback-message'].textContent, /Seek failed.*PLAYER_ERROR_INVALID_STATE/);
+  app.advance(2999);
+  assert.equal(app.elements['playback-message'].classList.contains('hidden'), false);
+  app.advance(1);
+  assert.equal(app.elements['playback-message'].classList.contains('hidden'), true);
+  app.advance(1500);
+  assert.equal(app.elements.hud.classList.contains('dimmed'), true);
+  assert.equal(app.elements['player-screen'].classList.contains('controls-visible'), false);
+  assert.equal(app.focused, null);
+  app.poll();
+  assert.equal(app.reports.at(-1).status, 'playing');
+  assert.equal(app.reports.at(-1).seek.state, 'error');
+  assert.match(app.reports.at(-1).seek.error, /PLAYER_ERROR_INVALID_STATE/);
+  app.key(38);
+  assert.equal(app.elements.hud.classList.contains('dimmed'), false);
+  app.key(417); assert.equal(attempts, 2);
+  assert.equal(app.calls.filter(call => call[0] === 'open').length, 1);
+});
+
+test('timed-out seeks and unsupported streams also release the HUD', () => {
+  for (const unsupported of [false, true]) {
+    const app = setup(); app.start(); app.ready();
+    if (unsupported) app.avplay.getDuration = () => 0;
+    else app.avplay.seekTo = () => {};
+    app.key(417);
+    if (!unsupported) app.advance(6000);
+    assert.match(app.elements['playback-message'].textContent, unsupported ? /does not offer seeking/ : /Seek timed out/);
+    app.advance(4500);
+    assert.equal(app.elements['playback-message'].classList.contains('hidden'), true);
+    assert.equal(app.elements.hud.classList.contains('dimmed'), true);
+  }
+});
+
+test('a paused seek error expires but keeps pause controls until playback resumes', () => {
+  const app = setup(); app.start(); app.ready(); app.key(19);
+  app.avplay.seekTo = (_target, _success, error) => error(new Error('Unsupported seek'));
+  app.key(417); app.advance(4500);
+  assert.equal(app.elements['playback-message'].classList.contains('hidden'), true);
+  assert.equal(app.elements.hud.classList.contains('dimmed'), false);
+  assert.equal(app.avplay.getState(), 'PAUSED');
+  app.key(415); app.advance(4500);
+  assert.equal(app.elements.hud.classList.contains('dimmed'), true);
+});
+
+test('expired seek notices cannot dismiss newer buffering or fatal playback errors', () => {
+  for (const fatal of [false, true]) {
+    const app = setup(); app.start(); app.ready();
+    app.avplay.seekTo = (_target, _success, error) => error(new Error('Unsupported seek'));
+    app.key(417); app.advance(1000);
+    if (fatal) app.listener.onerror('Unsupported codec');
+    else app.listener.onbufferingstart();
+    app.advance(9000);
+    assert.match(app.elements['playback-message'].textContent, fatal ? /Unsupported codec.*Press Back/ : /Buffering/);
+    assert.equal(app.elements['playback-message'].classList.contains('hidden'), false);
+    assert.equal(app.elements.hud.classList.contains('dimmed'), false);
+    if (!fatal) {
+      app.listener.onbufferingcomplete(); app.advance(4500);
+      assert.equal(app.elements.hud.classList.contains('dimmed'), true);
+    }
+    app.key(10009);
+    assert.equal(app.elements['library-screen'].classList.contains('hidden'), false);
+  }
+});
+
+test('old seek-notice timers cannot clear the next episode loading message', () => {
+  const app = setup(); app.start(); app.ready();
+  app.avplay.seekTo = (_target, _success, error) => error(new Error('Unsupported seek'));
+  app.key(417);
+  const staleCallbacks = [...app.timeouts.values()];
+  app.key(10009); app.start();
+  staleCallbacks.forEach(callback => callback());
+  app.advance(10000);
+  assert.equal(app.elements['playback-message'].textContent, 'Loading video…');
+  assert.equal(app.elements['playback-message'].classList.contains('hidden'), false);
+  assert.equal(app.elements.hud.classList.contains('dimmed'), false);
+  app.ready(); app.advance(4500);
+  assert.equal(app.elements.hud.classList.contains('dimmed'), true);
 });
 
 test('relative seek falls back to absolute and late callbacks cannot affect a replacement video', () => {

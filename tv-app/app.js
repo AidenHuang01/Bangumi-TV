@@ -30,7 +30,7 @@
   var cues = [];
   var subtitleTimer;
   var nativeSubtitleTimer;
-  var hideTimer;
+  var hideTimer, messageTimer, messageTicket = 0;
   var savedFocus;
   var lastCard;
   var browseView = 'anime';
@@ -78,7 +78,7 @@
     receiverBusy = true;
     var base = server;
     if (!receiverSession) {
-      tvPost('/api/tv/register', { clientId: receiverClient, bootId: receiverBoot, version: '0.6.2' }, function (error, result) {
+      tvPost('/api/tv/register', { clientId: receiverClient, bootId: receiverBoot, version: '0.6.3' }, function (error, result) {
         receiverBusy = false;
         if (base !== server) return;
         if (error || !result.session) { receiverLabel(error ? error.message : 'Phone controller needs the updated Mac server.'); return; }
@@ -387,20 +387,36 @@
     if (subtitlesOn) cues.forEach(function (cue) { if (now >= cue.start && now < cue.end) text += (text ? '\n' : '') + cue.text; });
     if (cues.length || !nativePlayer) $('subtitle').textContent = text;
   }
-  function revealControls(focus) {
+  function scheduleControlsHide() {
     clearTimeout(hideTimer);
-    $('hud').classList.remove('dimmed');
-    $('player-screen').classList.add('controls-visible');
-    if (focus) $('toggle-play').focus();
+    var generation = playGeneration;
     hideTimer = setTimeout(function () {
-      if (current && !preparing && !paused() && !visible($('playback-message'))) {
+      if (generation !== playGeneration) return;
+      hideTimer = null;
+      if (current && !preparing && !buffering && !seeking && !remoteError && !paused() && !visible($('playback-message'))) {
         $('hud').classList.add('dimmed');
         $('player-screen').classList.remove('controls-visible');
         if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
       }
     }, 4500);
   }
-  function message(text) { $('playback-message').textContent = text; show($('playback-message'), !!text); }
+  function revealControls(focus) {
+    $('hud').classList.remove('dimmed');
+    $('player-screen').classList.add('controls-visible');
+    if (focus) $('toggle-play').focus();
+    scheduleControlsHide();
+  }
+  function message(text, transient) {
+    clearTimeout(messageTimer);
+    var ticket = ++messageTicket, generation = playGeneration;
+    $('playback-message').textContent = text; show($('playback-message'), !!text);
+    // A seek rejection is not a playback failure. Never let its notice pin the HUD.
+    if (text && transient) messageTimer = setTimeout(function () {
+      if (ticket === messageTicket && generation === playGeneration) message('');
+    }, 3000);
+    // Loading/buffering may outlast the original one-shot controls timer.
+    if (!text && current && !hideTimer && $('player-screen').classList.contains('controls-visible')) scheduleControlsHide();
+  }
   function screenSaver(enabled) {
     var common = window.webapis && window.webapis.appcommon;
     if (!common || !common.setScreenSaver) return;
@@ -502,7 +518,7 @@
     if (!current || preparing) return;
     if (seeking) { message('A seek is in progress…'); return; }
     var length = duration();
-    if (!isFinite(length) || length <= 0) { message('This stream does not offer seeking.'); revealControls(false); return; }
+    if (!isFinite(length) || length <= 0) { message('This stream does not offer seeking.', true); revealControls(false); return; }
     var from = position(), target = Math.round(Math.max(1, Math.min(Math.max(1, length - 1000), from + delta * 1000)));
     var generation = playGeneration, ticket = ++seekTicket, attempt = 0;
     var wasPaused = paused();
@@ -514,7 +530,7 @@
       clearTimeout(seekTimer); seeking = false; seekSnapshot = null;
       remoteSeek = { state: error ? 'error' : 'done', from: from, target: target, actual: position(), error: error || '' };
       if (danmaku) danmaku.tick(position(), paused() || buffering || !!remoteError, true);
-      message(error || ''); updateTime(); revealControls(false);
+      message(error || '', !!error); updateTime(); revealControls(false);
     }
     function run(absolute) {
       var number = ++attempt;

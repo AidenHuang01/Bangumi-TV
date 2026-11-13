@@ -647,6 +647,13 @@ auto-hides after 4.5 seconds. With it hidden, Left/Right seek, OK toggles playba
 and Down reveals the controls. Dedicated media keys work when the remote has them.
 Desktop preview: arrow keys, Enter, Space and Escape.
 
+TV widget 0.6.3 dismisses nonfatal seek-failure/unsupported-seek notices after
+3 seconds, allowing the playing HUD to hide normally after 4.5 seconds. Paused
+controls remain available until playback resumes; loading, buffering and fatal
+errors stay visible as needed. Clearing a notice does not clear the seek error
+reported to the phone. This fix requires updating the installed TV widget, not
+just restarting the Mac server.
+
 ## Verification and limits
 
 Run `npm test` for discovery, HTTP/range/HLS proxy, TV search-flow and simulated
