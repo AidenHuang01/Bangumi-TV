@@ -643,12 +643,12 @@ Keep the existing SDB daemon running. If disconnected, reconnect with
 5. Add a real episode, refresh and repeat. Run a longer episode to assess buffering.
 
 Controls: D-pad to browse, OK to select, Back to return. During playback the HUD
-auto-hides after 4.5 seconds. With it hidden, Left/Right seek, OK toggles playback,
+auto-hides after 2 seconds. With it hidden, Left/Right seek, OK toggles playback,
 and Down reveals the controls. Dedicated media keys work when the remote has them.
 Desktop preview: arrow keys, Enter, Space and Escape.
 
-TV widget 0.6.3 dismisses nonfatal seek-failure/unsupported-seek notices after
-3 seconds, allowing the playing HUD to hide normally after 4.5 seconds. Paused
+TV widget 0.6.4 dismisses nonfatal seek-failure/unsupported-seek notices after
+2 seconds, allowing the playing HUD to hide normally after 2 seconds. Paused
 controls remain available until playback resumes; loading, buffering and fatal
 errors stay visible as needed. Clearing a notice does not clear the seek error
 reported to the phone. This fix requires updating the installed TV widget, not

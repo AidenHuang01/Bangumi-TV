@@ -172,17 +172,29 @@ test('missing seek callbacks unlock retries and report a nonfatal error to the p
   app.key(417); assert.equal(attempts, 2);
 });
 
-test('seek rejection clears its notice and auto-hides the playing HUD without losing the phone error', () => {
+test('playing controls hide after two seconds of inactivity and reopening resets the timer', () => {
+  const app = setup(); app.start(); app.ready();
+  app.advance(1999);
+  assert.equal(app.elements.hud.classList.contains('dimmed'), false);
+  app.advance(1);
+  assert.equal(app.elements.hud.classList.contains('dimmed'), true);
+  app.key(38); app.advance(1500); app.key(38); app.advance(1999);
+  assert.equal(app.elements.hud.classList.contains('dimmed'), false);
+  app.advance(1);
+  assert.equal(app.elements.hud.classList.contains('dimmed'), true);
+});
+
+test('seek rejection clears its notice and auto-hides the playing HUD within two seconds without losing the phone error', () => {
   const app = setup(true); app.start(); app.ready();
   let attempts = 0;
   app.avplay.seekTo = (_target, _success, error) => { attempts++; error({ name: 'PLAYER_ERROR_INVALID_STATE' }); };
   app.key(417);
   assert.match(app.elements['playback-message'].textContent, /Seek failed.*PLAYER_ERROR_INVALID_STATE/);
-  app.advance(2999);
+  app.advance(1999);
   assert.equal(app.elements['playback-message'].classList.contains('hidden'), false);
+  assert.equal(app.elements.hud.classList.contains('dimmed'), false);
   app.advance(1);
   assert.equal(app.elements['playback-message'].classList.contains('hidden'), true);
-  app.advance(1500);
   assert.equal(app.elements.hud.classList.contains('dimmed'), true);
   assert.equal(app.elements['player-screen'].classList.contains('controls-visible'), false);
   assert.equal(app.focused, null);
@@ -204,7 +216,7 @@ test('timed-out seeks and unsupported streams also release the HUD', () => {
     app.key(417);
     if (!unsupported) app.advance(6000);
     assert.match(app.elements['playback-message'].textContent, unsupported ? /does not offer seeking/ : /Seek timed out/);
-    app.advance(4500);
+    app.advance(2000);
     assert.equal(app.elements['playback-message'].classList.contains('hidden'), true);
     assert.equal(app.elements.hud.classList.contains('dimmed'), true);
   }
@@ -213,11 +225,11 @@ test('timed-out seeks and unsupported streams also release the HUD', () => {
 test('a paused seek error expires but keeps pause controls until playback resumes', () => {
   const app = setup(); app.start(); app.ready(); app.key(19);
   app.avplay.seekTo = (_target, _success, error) => error(new Error('Unsupported seek'));
-  app.key(417); app.advance(4500);
+  app.key(417); app.advance(2000);
   assert.equal(app.elements['playback-message'].classList.contains('hidden'), true);
   assert.equal(app.elements.hud.classList.contains('dimmed'), false);
   assert.equal(app.avplay.getState(), 'PAUSED');
-  app.key(415); app.advance(4500);
+  app.key(415); app.advance(2000);
   assert.equal(app.elements.hud.classList.contains('dimmed'), true);
 });
 
@@ -233,7 +245,7 @@ test('expired seek notices cannot dismiss newer buffering or fatal playback erro
     assert.equal(app.elements['playback-message'].classList.contains('hidden'), false);
     assert.equal(app.elements.hud.classList.contains('dimmed'), false);
     if (!fatal) {
-      app.listener.onbufferingcomplete(); app.advance(4500);
+      app.listener.onbufferingcomplete(); app.advance(2000);
       assert.equal(app.elements.hud.classList.contains('dimmed'), true);
     }
     app.key(10009);
@@ -252,7 +264,7 @@ test('old seek-notice timers cannot clear the next episode loading message', () 
   assert.equal(app.elements['playback-message'].textContent, 'Loading video…');
   assert.equal(app.elements['playback-message'].classList.contains('hidden'), false);
   assert.equal(app.elements.hud.classList.contains('dimmed'), false);
-  app.ready(); app.advance(4500);
+  app.ready(); app.advance(2000);
   assert.equal(app.elements.hud.classList.contains('dimmed'), true);
 });
 

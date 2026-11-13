@@ -78,7 +78,7 @@
     receiverBusy = true;
     var base = server;
     if (!receiverSession) {
-      tvPost('/api/tv/register', { clientId: receiverClient, bootId: receiverBoot, version: '0.6.3' }, function (error, result) {
+      tvPost('/api/tv/register', { clientId: receiverClient, bootId: receiverBoot, version: '0.6.4' }, function (error, result) {
         receiverBusy = false;
         if (base !== server) return;
         if (error || !result.session) { receiverLabel(error ? error.message : 'Phone controller needs the updated Mac server.'); return; }
@@ -398,7 +398,7 @@
         $('player-screen').classList.remove('controls-visible');
         if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
       }
-    }, 4500);
+    }, 2000);
   }
   function revealControls(focus) {
     $('hud').classList.remove('dimmed');
@@ -413,7 +413,7 @@
     // A seek rejection is not a playback failure. Never let its notice pin the HUD.
     if (text && transient) messageTimer = setTimeout(function () {
       if (ticket === messageTicket && generation === playGeneration) message('');
-    }, 3000);
+    }, 2000);
     // Loading/buffering may outlast the original one-shot controls timer.
     if (!text && current && !hideTimer && $('player-screen').classList.contains('controls-visible')) scheduleControlsHide();
   }
